@@ -1,0 +1,1113 @@
+openapi: 3.0.3
+info:
+  title: SafeBank Agent API
+  version: 0.2.0
+  description: |
+    v0.2 interface draft for SafeBank Agent.
+    This version keeps the v0.1 business resources, but adds financial API
+    controls such as request tracing, idempotency, run state, confirmation
+    state, strong verification state, common errors, pagination, and an
+    internal tool gateway for AI service calls.
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+tags:
+  - name: Auth
+  - name: Agent Runs
+  - name: Confirmations
+  - name: Accounts
+  - name: Transactions
+  - name: Transfers
+  - name: Subscriptions
+  - name: Security
+  - name: Audit
+  - name: Internal Tools
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Mock login
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        "200":
+          description: Login response
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/users/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      summary: Get current user
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      responses:
+        "200":
+          description: Current user
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/agent/runs:
+    post:
+      tags: [Agent Runs]
+      operationId: createAgentRun
+      summary: Create an agent run from a user message
+      description: Replaces the v0.1 single-shot `/agent/chat` model with a traceable run resource.
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAgentRunRequest'
+      responses:
+        "200":
+          description: Agent run response
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRun'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/agent/runs/{run_id}:
+    get:
+      tags: [Agent Runs]
+      operationId: getAgentRun
+      summary: Get agent run state
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/RunId'
+      responses:
+        "200":
+          description: Agent run state
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRun'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/agent/runs/{run_id}/abort:
+    post:
+      tags: [Agent Runs]
+      operationId: abortAgentRun
+      summary: Abort an agent run
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RunId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AbortRunRequest'
+      responses:
+        "200":
+          description: Abort result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/agent/confirmations/{confirmation_id}/decide:
+    post:
+      tags: [Confirmations]
+      operationId: decideConfirmation
+      summary: Approve or reject a pending yellow-risk operation
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/ConfirmationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmationDecisionRequest'
+      responses:
+        "200":
+          description: Confirmation decision result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRun'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/accounts:
+    get:
+      tags: [Accounts]
+      operationId: listAccounts
+      summary: List accounts
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      responses:
+        "200":
+          description: Account list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountList'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/accounts/{account_id}/balance:
+    get:
+      tags: [Accounts]
+      operationId: getAccountBalance
+      summary: Get account balance
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        "200":
+          description: Account balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Balance'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/transactions:
+    get:
+      tags: [Transactions]
+      operationId: listTransactions
+      summary: List transactions
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: account_id
+          in: query
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Transaction page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionPage'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/bills/analyze:
+    post:
+      tags: [Transactions]
+      operationId: analyzeBill
+      summary: Analyze monthly bill
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillAnalyzeRequest'
+      responses:
+        "200":
+          description: Bill analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillAnalysis'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/transfers/preview:
+    post:
+      tags: [Transfers]
+      operationId: previewTransfer
+      summary: Preview a transfer
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferPreviewRequest'
+      responses:
+        "200":
+          description: Transfer preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferPreview'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/transfers/{preview_id}/execute:
+    post:
+      tags: [Transfers]
+      operationId: executeTransfer
+      summary: Execute a transfer from an immutable preview
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/PreviewId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferExecuteRequest'
+      responses:
+        "200":
+          description: Transfer result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResult'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/subscriptions:
+    get:
+      tags: [Subscriptions]
+      operationId: listSubscriptions
+      summary: List subscriptions
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+      responses:
+        "200":
+          description: Subscription list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionList'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/subscriptions/{subscription_id}/cancel-preview:
+    post:
+      tags: [Subscriptions]
+      operationId: previewSubscriptionCancel
+      summary: Preview subscription cancellation
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/SubscriptionId'
+      responses:
+        "200":
+          description: Cancellation preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionCancelPreview'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/security/verifications:
+    post:
+      tags: [Security]
+      operationId: createVerification
+      summary: Start strong verification
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVerificationRequest'
+      responses:
+        "200":
+          description: Verification session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Verification'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/security/verifications/{verification_id}/verify:
+    post:
+      tags: [Security]
+      operationId: verifyCode
+      summary: Verify an OTP code
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/VerificationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyCodeRequest'
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResult'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/audit-logs:
+    get:
+      tags: [Audit]
+      operationId: listAuditLogs
+      summary: List audit logs
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - name: session_id
+          in: query
+          schema:
+            type: string
+        - name: run_id
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Audit log page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogPage'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /internal/v1/tools/{tool_name}/invoke:
+    post:
+      tags: [Internal Tools]
+      operationId: invokeTool
+      summary: Invoke an approved backend tool
+      description: Internal endpoint for the AI service. The backend still validates policy and tool input schemas.
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - name: tool_name
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - account.list
+              - account.balance.get
+              - transaction.list
+              - bill.summary
+              - bill.analyze
+              - contacts.search
+              - transfer.preview
+              - transfer.execute
+              - subscription.list
+              - subscription.cancel.preview
+              - subscription.cancel.execute
+              - security.otp.send
+              - security.otp.verify
+              - audit.create
+              - safety.evaluate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ToolInvokeRequest'
+      responses:
+        "200":
+          description: Tool result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolInvokeResponse'
+        default:
+          $ref: '#/components/responses/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  headers:
+    XRequestId:
+      description: Request correlation id.
+      schema:
+        type: string
+  parameters:
+    XRequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Client supplied request correlation id. Server returns the same value or generates one.
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Unique key for safely retrying write operations.
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+    RunId:
+      name: run_id
+      in: path
+      required: true
+      schema:
+        type: string
+    AccountId:
+      name: account_id
+      in: path
+      required: true
+      schema:
+        type: string
+    PreviewId:
+      name: preview_id
+      in: path
+      required: true
+      schema:
+        type: string
+    ConfirmationId:
+      name: confirmation_id
+      in: path
+      required: true
+      schema:
+        type: string
+    VerificationId:
+      name: verification_id
+      in: path
+      required: true
+      schema:
+        type: string
+    SubscriptionId:
+      name: subscription_id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    Error:
+      description: Error response
+      headers:
+        X-Request-Id:
+          $ref: '#/components/headers/XRequestId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [code, message, request_id]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - AUTH_REQUIRED
+            - FORBIDDEN
+            - CONFIRMATION_REQUIRED
+            - STRONG_VERIFICATION_REQUIRED
+            - IDEMPOTENCY_CONFLICT
+            - REPLAY_DETECTED
+            - POLICY_BLOCKED
+            - RATE_LIMITED
+            - TOOL_EXECUTION_FAILED
+            - INTERNAL_ERROR
+        message:
+          type: string
+        request_id:
+          type: string
+        audit_id:
+          type: string
+          nullable: true
+        details:
+          type: object
+          additionalProperties: true
+    PageMeta:
+      type: object
+      required: [limit, has_more]
+      properties:
+        next_cursor:
+          type: string
+          nullable: true
+        limit:
+          type: integer
+        has_more:
+          type: boolean
+    LoginRequest:
+      type: object
+      required: [phone, password]
+      properties:
+        phone:
+          type: string
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required: [access_token, token_type, user]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        user:
+          $ref: '#/components/schemas/UserProfile'
+    UserProfile:
+      type: object
+      required: [id, name, phone_masked, status]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        phone_masked:
+          type: string
+        status:
+          type: string
+          enum: [NORMAL, LOCKED]
+        risk_level:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+    CreateAgentRunRequest:
+      type: object
+      required: [session_id, message]
+      properties:
+        session_id:
+          type: string
+        message:
+          type: string
+        consent_scope:
+          type: array
+          items:
+            type: string
+            enum:
+              - ACCOUNT_READ
+              - TRANSACTION_READ
+              - BILL_ANALYZE
+              - TRANSFER_PREVIEW
+              - TRANSFER_EXECUTE
+              - SUBSCRIPTION_READ
+              - SUBSCRIPTION_CANCEL
+        client_context:
+          type: object
+          additionalProperties: true
+    AgentRun:
+      type: object
+      required: [run_id, session_id, state, message]
+      properties:
+        run_id:
+          type: string
+        session_id:
+          type: string
+        state:
+          type: string
+          enum:
+            - RECEIVED
+            - PLANNING
+            - WAITING_CONFIRMATION
+            - WAITING_VERIFICATION
+            - RUNNING
+            - SUCCEEDED
+            - FAILED
+            - BLOCKED
+            - ABORTED
+        message:
+          type: string
+        intent:
+          $ref: '#/components/schemas/Intent'
+        plan:
+          $ref: '#/components/schemas/TaskPlan'
+        policy:
+          $ref: '#/components/schemas/PolicyDecision'
+        pending_action:
+          $ref: '#/components/schemas/PendingAction'
+        data:
+          type: object
+          additionalProperties: true
+        audit_id:
+          type: string
+    Intent:
+      type: object
+      required: [name, confidence]
+      properties:
+        name:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        slots:
+          type: object
+          additionalProperties: true
+        missing_slots:
+          type: array
+          items:
+            type: string
+        risk_hints:
+          type: array
+          items:
+            type: string
+    TaskPlan:
+      type: object
+      required: [plan_id, nodes]
+      properties:
+        plan_id:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanNode'
+    PlanNode:
+      type: object
+      required: [id, type]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [TOOL, POLICY, HUMAN_CONFIRM, STRONG_VERIFY, RESPONSE]
+        tool:
+          type: string
+          nullable: true
+        input:
+          type: object
+          additionalProperties: true
+        depends_on:
+          type: array
+          items:
+            type: string
+    PolicyDecision:
+      type: object
+      required: [level, action, reason]
+      properties:
+        level:
+          type: string
+          enum: [GREEN, YELLOW, RED, BLOCKED]
+        action:
+          type: string
+          enum: [AUTO_EXECUTE, REQUIRE_CONFIRMATION, REQUIRE_STRONG_VERIFICATION, BLOCK]
+        reason:
+          type: string
+        risk_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        required_fields:
+          type: array
+          items:
+            type: string
+    PendingAction:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [NONE, CONFIRMATION, VERIFICATION]
+        confirmation:
+          $ref: '#/components/schemas/Confirmation'
+        verification:
+          $ref: '#/components/schemas/Verification'
+    Confirmation:
+      type: object
+      required: [confirmation_id, operation_type, summary, expires_at]
+      properties:
+        confirmation_id:
+          type: string
+        operation_type:
+          type: string
+        operation_snapshot_hash:
+          type: string
+        summary:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        expires_at:
+          type: string
+          format: date-time
+    ConfirmationDecisionRequest:
+      type: object
+      required: [confirmed]
+      properties:
+        confirmed:
+          type: boolean
+        reason:
+          type: string
+    AbortRunRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+    OperationResult:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        audit_id:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+    AccountList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+    Account:
+      type: object
+      required: [id, name, account_no_masked, type, currency]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        account_no_masked:
+          type: string
+        type:
+          type: string
+          enum: [DEBIT, CREDIT]
+        currency:
+          type: string
+          example: CNY
+    Balance:
+      type: object
+      required: [account_id, available_balance, currency, updated_at]
+      properties:
+        account_id:
+          type: string
+        available_balance:
+          type: number
+        frozen_balance:
+          type: number
+        currency:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+    TransactionPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+    Transaction:
+      type: object
+      required: [id, account_id, occurred_at, amount, currency, merchant, category]
+      properties:
+        id:
+          type: string
+        account_id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        amount:
+          type: number
+        currency:
+          type: string
+        merchant:
+          type: string
+        category:
+          type: string
+        channel:
+          type: string
+        is_abnormal:
+          type: boolean
+    BillAnalyzeRequest:
+      type: object
+      required: [month]
+      properties:
+        month:
+          type: string
+          pattern: '^\\d{4}-\\d{2}$'
+        include_abnormal_detection:
+          type: boolean
+          default: true
+    BillAnalysis:
+      type: object
+      required: [insights, abnormal_transactions]
+      properties:
+        summary:
+          type: object
+          additionalProperties: true
+        categories:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        insights:
+          type: array
+          items:
+            type: string
+        abnormal_transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+    TransferPreviewRequest:
+      type: object
+      required: [from_account_id, recipient_contact_id, amount]
+      properties:
+        from_account_id:
+          type: string
+        recipient_contact_id:
+          type: string
+        amount:
+          type: number
+          minimum: 0.01
+        currency:
+          type: string
+          default: CNY
+        memo:
+          type: string
+        schedule_time:
+          type: string
+          format: date-time
+          nullable: true
+    TransferPreview:
+      type: object
+      required: [preview_id, amount, currency, policy]
+      properties:
+        preview_id:
+          type: string
+        amount:
+          type: number
+        fee:
+          type: number
+        currency:
+          type: string
+        policy:
+          $ref: '#/components/schemas/PolicyDecision'
+        confirmation:
+          $ref: '#/components/schemas/Confirmation'
+    TransferExecuteRequest:
+      type: object
+      properties:
+        confirmation_id:
+          type: string
+          nullable: true
+        verification_token:
+          type: string
+          nullable: true
+    TransferResult:
+      type: object
+      required: [success, status, message]
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+          enum: [SUCCESS, PENDING, FAILED, BLOCKED]
+        transaction_id:
+          type: string
+          nullable: true
+        message:
+          type: string
+        audit_id:
+          type: string
+    SubscriptionList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscription'
+    Subscription:
+      type: object
+      required: [id, name, amount, currency, cycle, next_charge_date, status]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        cycle:
+          type: string
+          enum: [MONTHLY, QUARTERLY, YEARLY, UNKNOWN]
+        next_charge_date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ACTIVE, CANCELED, SUSPICIOUS]
+    SubscriptionCancelPreview:
+      type: object
+      required: [subscription, policy, confirmation]
+      properties:
+        subscription:
+          $ref: '#/components/schemas/Subscription'
+        impact:
+          type: string
+        policy:
+          $ref: '#/components/schemas/PolicyDecision'
+        confirmation:
+          $ref: '#/components/schemas/Confirmation'
+    CreateVerificationRequest:
+      type: object
+      required: [scene, operation_type, operation_id]
+      properties:
+        scene:
+          type: string
+          enum: [TRANSFER_HIGH_RISK, CARD_LOSS, WEALTH_PURCHASE, LOGIN]
+        operation_type:
+          type: string
+        operation_id:
+          type: string
+    Verification:
+      type: object
+      required: [verification_id, scene, expires_at]
+      properties:
+        verification_id:
+          type: string
+        scene:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+    VerifyCodeRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+    VerificationResult:
+      type: object
+      required: [verified]
+      properties:
+        verified:
+          type: boolean
+        verification_token:
+          type: string
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+    AuditLogPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        page:
+          $ref: '#/components/schemas/PageMeta'
+    ToolInvokeRequest:
+      type: object
+      required: [session_id, run_id, input]
+      properties:
+        session_id:
+          type: string
+        run_id:
+          type: string
+        input:
+          type: object
+          additionalProperties: true
+    ToolInvokeResponse:
+      type: object
+      required: [tool_name, success]
+      properties:
+        tool_name:
+          type: string
+        success:
+          type: boolean
+        data:
+          type: object
+          additionalProperties: true
+        audit_id:
+          type: string
+
