@@ -4,7 +4,7 @@
 
 Channel Gateway 将 APP、飞书、企业微信等渠道的消息转换为统一协议，再交给同一套 Agent Runtime。它只负责渠道身份映射、会话映射、消息幂等和回复编排，不获得银行资金执行权。
 
-当前阶段已实现通用网关和飞书长连接适配器；部署阶段再增加 Webhook 验签、事件解密和重放防护。长连接联调见 [`FEISHU_LONG_CONNECTION.md`](./FEISHU_LONG_CONNECTION.md)。
+当前已实现通用网关、飞书长连接和 Webhook 双模式。长连接联调见 [`FEISHU_LONG_CONNECTION.md`](./FEISHU_LONG_CONNECTION.md)，Webhook 部署见 [`FEISHU_WEBHOOK.md`](./FEISHU_WEBHOOK.md)。两种模式只负责接收和回复，最终都进入同一 Channel Gateway。
 
 ## 2. 信任边界
 
@@ -24,8 +24,9 @@ Channel Gateway 将 APP、飞书、企业微信等渠道的消息转换为统一
 | `channel_identities` | 银行用户与外部渠道用户映射 | 渠道、租户、外部用户 HMAC 唯一 |
 | `channel_conversations` | 外部会话与 Agent Session 映射 | 同一渠道身份和外部会话只对应一个 Agent Session |
 | `channel_messages` | 入站消息、处理状态和最小回复快照 | 外部消息 HMAC 唯一；相同编号不同内容直接冲突 |
+| `channel_worker_leases` | 长连接、Webhook 与调度 Worker 在线租约 | 心跳短时过期；进程标识只向用户展示脱敏指纹 |
 
-外部用户 ID、外部会话 ID 和外部消息 ID 均使用 `CHANNEL_IDENTITY_PEPPER` 计算 HMAC 后保存，数据库不保存原始标识。回复快照只包含 Run ID、状态、提示文本和安全动作，不持久化账户余额等完整业务数据。
+外部用户 ID、外部会话 ID 和外部消息 ID 均使用 `CHANNEL_IDENTITY_PEPPER` 计算 HMAC。外部用户 ID 仅因主动私聊投递需要额外保存加密密文，该密文不进入用户 API；前端只显示脱敏 HMAC 指纹。回复快照只包含 Run ID、状态、提示文本和安全动作，不持久化账户余额等完整业务数据。
 
 ## 4. 绑定流程
 
@@ -39,6 +40,7 @@ Channel Gateway 将 APP、飞书、企业微信等渠道的消息转换为统一
 ```
 
 绑定码数据库中只保存摘要。重复兑换、过期兑换，以及同一渠道身份抢绑到另一个银行用户都会被拒绝并写入渠道消息记录。
+同一用户重新生成绑定码时，旧的未使用绑定码立即取消，避免多个有效口令并存。
 
 ## 5. 统一入站协议
 
@@ -79,6 +81,7 @@ Content-Type: application/json
 - Agent Run 同时使用 `channel:{gateway_message_id}` 作为第二层幂等键。
 
 因此适配器超时重试不会产生重复 Run。若处理中断，系统保持保守状态，不会猜测业务已经成功。
+飞书回复同时使用由 `gateway_message_id` 推导的稳定 UUID；平台重复投递时，即使再次调用回复 API，也不会产生第二条不同回复。
 
 ## 7. 回复与安全跳转
 
@@ -109,6 +112,9 @@ Content-Type: application/json
 | `GET` | `/api/channels/identities` | JWT | 查看当前用户的渠道身份 |
 | `DELETE` | `/api/channels/identities/{identity_id}` | JWT | 撤销渠道身份 |
 | `POST` | `/api/channels/messages/inbound` | Gateway Key | 适配器提交统一入站消息 |
+| `GET` | `/api/channels/status` | JWT | 查看配置、在线租约和脱敏 Worker 状态 |
+| `POST` | `/api/channels/workers/heartbeat` | Gateway Key | Worker 续租并上报降级错误码 |
+| `POST` | `/api/channels/webhooks/feishu` | 飞书签名 | 接收验签、解密后的飞书事件 |
 
 ## 9. 配置
 
@@ -118,6 +124,8 @@ Content-Type: application/json
 CHANNEL_GATEWAY_SECRET=<至少 32 位，仅渠道适配器持有>
 CHANNEL_IDENTITY_PEPPER=<至少 32 位，仅后端持有>
 CHANNEL_LINK_TOKEN_TTL_SECONDS=600
+CHANNEL_WORKER_HEARTBEAT_SECONDS=20
+CHANNEL_WORKER_LEASE_SECONDS=75
 TRUSTED_APP_BASE_URL=http://127.0.0.1:5173
 ```
 
@@ -148,3 +156,7 @@ python -m alembic upgrade head
 - 飞书安全操作使用交互卡片，普通查询继续使用文本回复。
 - 适配器密钥缺失或错误返回 401。
 - 歧义协议负载返回统一的 `INVALID_REQUEST`。
+- 用户无需接口工具即可生成绑定码、查看倒计时、脱敏身份、最近活跃时间并撤销。
+- Worker 心跳有效时显示在线，租约过期或停止状态自动显示离线。
+- Webhook 错误签名、错误令牌、过期时间窗和无效密文均在业务解析前拒绝。
+- 长连接与 Webhook 重复投递同一消息时只产生一个 Agent Run，并使用相同回复 UUID。

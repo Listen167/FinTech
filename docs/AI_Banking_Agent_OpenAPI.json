@@ -796,6 +796,62 @@
         ]
       }
     },
+    "/api/evaluation/summary": {
+      "get": {
+        "tags": [
+          "Evaluation & Observability"
+        ],
+        "summary": "Evaluation Summary",
+        "operationId": "evaluation_summary_api_evaluation_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Evaluation Summary Api Evaluation Summary Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/evaluation/runtime-metrics": {
+      "get": {
+        "tags": [
+          "Evaluation & Observability"
+        ],
+        "summary": "Runtime Metrics",
+        "operationId": "runtime_metrics_api_evaluation_runtime_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Runtime Metrics Api Evaluation Runtime Metrics Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/audit-logs": {
       "get": {
         "tags": [
@@ -1423,6 +1479,1974 @@
         }
       }
     },
+    "/api/family-funding/context": {
+      "get": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "Get Funding Context",
+        "operationId": "get_funding_context_api_family_funding_context_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Funding Context Api Family Funding Context Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/family-funding/negotiations": {
+      "post": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "Create Negotiation",
+        "operationId": "create_negotiation_api_family_funding_negotiations_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFundingNegotiationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Negotiation Api Family Funding Negotiations Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "List Negotiations",
+        "operationId": "list_negotiations_api_family_funding_negotiations_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "WAITING_INPUT",
+                    "WAITING_SELECTION",
+                    "PENDING_CONFIRMATION",
+                    "APPLIED",
+                    "REJECTED",
+                    "CANCELED",
+                    "STALE",
+                    "WAITING_HUMAN",
+                    "UNDONE"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Negotiations Api Family Funding Negotiations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/family-funding/negotiations/{negotiation_id}": {
+      "get": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "Get Negotiation",
+        "operationId": "get_negotiation_api_family_funding_negotiations__negotiation_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "negotiation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Negotiation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Negotiation Api Family Funding Negotiations  Negotiation Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/family-funding/negotiations/{negotiation_id}/audits": {
+      "get": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "List Negotiation Audits",
+        "operationId": "list_negotiation_audits_api_family_funding_negotiations__negotiation_id__audits_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "negotiation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Negotiation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Negotiation Audits Api Family Funding Negotiations  Negotiation Id  Audits Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/family-funding/negotiations/{negotiation_id}/constraints": {
+      "put": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "Complete Constraints",
+        "operationId": "complete_constraints_api_family_funding_negotiations__negotiation_id__constraints_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "negotiation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Negotiation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteFundingConstraintsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Complete Constraints Api Family Funding Negotiations  Negotiation Id  Constraints Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/family-funding/negotiations/{negotiation_id}/model-plans": {
+      "post": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "Add Model Plan",
+        "operationId": "add_model_plan_api_family_funding_negotiations__negotiation_id__model_plans_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "negotiation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Negotiation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposeCustomFundingPlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Add Model Plan Api Family Funding Negotiations  Negotiation Id  Model Plans Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/family-funding/negotiations/{negotiation_id}/select": {
+      "post": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "Select Plan",
+        "operationId": "select_plan_api_family_funding_negotiations__negotiation_id__select_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "negotiation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Negotiation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectFundingPlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Select Plan Api Family Funding Negotiations  Negotiation Id  Select Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/family-funding/negotiations/{negotiation_id}/confirm": {
+      "post": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "Confirm Plan",
+        "operationId": "confirm_plan_api_family_funding_negotiations__negotiation_id__confirm_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "negotiation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Negotiation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FundingDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Confirm Plan Api Family Funding Negotiations  Negotiation Id  Confirm Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/family-funding/negotiations/{negotiation_id}/{command}": {
+      "post": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "Transition Negotiation",
+        "operationId": "transition_negotiation_api_family_funding_negotiations__negotiation_id___command__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "negotiation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Negotiation Id"
+            }
+          },
+          {
+            "name": "command",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "reject",
+                "cancel",
+                "handoff",
+                "undo"
+              ],
+              "type": "string",
+              "title": "Command"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FundingDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Transition Negotiation Api Family Funding Negotiations  Negotiation Id   Command  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/family-funding/consent-scopes": {
+      "get": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "List Consent Scopes",
+        "operationId": "list_consent_scopes_api_family_funding_consent_scopes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response List Consent Scopes Api Family Funding Consent Scopes Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "Create Consent Scope",
+        "operationId": "create_consent_scope_api_family_funding_consent_scopes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFundingConsentScopeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Consent Scope Api Family Funding Consent Scopes Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/family-funding/consent-scopes/{scope_id}": {
+      "delete": {
+        "tags": [
+          "Family Funding Negotiation"
+        ],
+        "summary": "Revoke Consent Scope",
+        "operationId": "revoke_consent_scope_api_family_funding_consent_scopes__scope_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scope Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Revoke Consent Scope Api Family Funding Consent Scopes  Scope Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fraud-cooling/events": {
+      "get": {
+        "tags": [
+          "Fraud Cooling"
+        ],
+        "summary": "List Fraud Events",
+        "operationId": "list_fraud_events_api_fraud_cooling_events_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "COOLING_OFF",
+                    "RELEASED",
+                    "EXPIRED"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Fraud Events Api Fraud Cooling Events Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fraud-cooling/events/{event_id}": {
+      "get": {
+        "tags": [
+          "Fraud Cooling"
+        ],
+        "summary": "Get Fraud Event",
+        "operationId": "get_fraud_event_api_fraud_cooling_events__event_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Fraud Event Api Fraud Cooling Events  Event Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fraud-cooling/events/{event_id}/audits": {
+      "get": {
+        "tags": [
+          "Fraud Cooling"
+        ],
+        "summary": "List Fraud Event Audits",
+        "operationId": "list_fraud_event_audits_api_fraud_cooling_events__event_id__audits_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Fraud Event Audits Api Fraud Cooling Events  Event Id  Audits Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fraud-cooling/events/{event_id}/appeals": {
+      "post": {
+        "tags": [
+          "Fraud Cooling"
+        ],
+        "summary": "Submit Fraud Appeal",
+        "operationId": "submit_fraud_appeal_api_fraud_cooling_events__event_id__appeals_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FraudAppealRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Submit Fraud Appeal Api Fraud Cooling Events  Event Id  Appeals Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fraud-cooling/events/{event_id}/release-challenges": {
+      "post": {
+        "tags": [
+          "Fraud Cooling"
+        ],
+        "summary": "Create Fraud Release Challenge",
+        "operationId": "create_fraud_release_challenge_api_fraud_cooling_events__event_id__release_challenges_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Fraud Release Challenge Api Fraud Cooling Events  Event Id  Release Challenges Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fraud-cooling/release-challenges/{challenge_id}/verify": {
+      "post": {
+        "tags": [
+          "Fraud Cooling"
+        ],
+        "summary": "Verify Fraud Release Challenge",
+        "operationId": "verify_fraud_release_challenge_api_fraud_cooling_release_challenges__challenge_id__verify_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "challenge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Challenge Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FraudReleaseVerificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Verify Fraud Release Challenge Api Fraud Cooling Release Challenges  Challenge Id  Verify Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/guardian-circle/invitations": {
+      "get": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "List Invitations",
+        "operationId": "list_invitations_api_guardian_circle_invitations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response List Invitations Api Guardian Circle Invitations Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "Create Invitation",
+        "operationId": "create_invitation_api_guardian_circle_invitations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGuardianInvitationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Invitation Api Guardian Circle Invitations Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/guardian-circle/invitations/accept": {
+      "post": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "Accept Invitation",
+        "operationId": "accept_invitation_api_guardian_circle_invitations_accept_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardianInvitationTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Accept Invitation Api Guardian Circle Invitations Accept Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/guardian-circle/invitations/reject": {
+      "post": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "Reject Invitation",
+        "operationId": "reject_invitation_api_guardian_circle_invitations_reject_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardianInvitationTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Reject Invitation Api Guardian Circle Invitations Reject Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/guardian-circle/invitations/{invitation_id}/cancel": {
+      "post": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "Cancel Invitation",
+        "operationId": "cancel_invitation_api_guardian_circle_invitations__invitation_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "invitation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invitation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardianReasonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancel Invitation Api Guardian Circle Invitations  Invitation Id  Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/guardian-circle/consents": {
+      "get": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "List Consents",
+        "operationId": "list_consents_api_guardian_circle_consents_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response List Consents Api Guardian Circle Consents Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/guardian-circle/consents/{consent_id}/revoke": {
+      "post": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "Revoke Consent",
+        "operationId": "revoke_consent_api_guardian_circle_consents__consent_id__revoke_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "consent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Consent Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardianReasonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Revoke Consent Api Guardian Circle Consents  Consent Id  Revoke Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/guardian-circle/consents/{consent_id}/audits": {
+      "get": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "List Consent Audits",
+        "operationId": "list_consent_audits_api_guardian_circle_consents__consent_id__audits_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "consent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Consent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Consent Audits Api Guardian Circle Consents  Consent Id  Audits Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/guardian-circle/risk-reviews": {
+      "get": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "List Risk Reviews",
+        "operationId": "list_risk_reviews_api_guardian_circle_risk_reviews_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response List Risk Reviews Api Guardian Circle Risk Reviews Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "Create Risk Review",
+        "operationId": "create_risk_review_api_guardian_circle_risk_reviews_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGuardianRiskReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Risk Review Api Guardian Circle Risk Reviews Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/guardian-circle/risk-reviews/{review_id}": {
+      "get": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "Get Risk Review",
+        "operationId": "get_risk_review_api_guardian_circle_risk_reviews__review_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "review_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Review Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Risk Review Api Guardian Circle Risk Reviews  Review Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/guardian-circle/risk-reviews/{review_id}/owner-decision": {
+      "post": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "Owner Decision",
+        "operationId": "owner_decision_api_guardian_circle_risk_reviews__review_id__owner_decision_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "review_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Review Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardianOwnerDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Owner Decision Api Guardian Circle Risk Reviews  Review Id  Owner Decision Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/guardian-circle/risk-reviews/{review_id}/guardian-decision": {
+      "post": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "Guardian Decision",
+        "operationId": "guardian_decision_api_guardian_circle_risk_reviews__review_id__guardian_decision_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "review_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Review Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardianRiskDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Guardian Decision Api Guardian Circle Risk Reviews  Review Id  Guardian Decision Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/life-radar/status": {
+      "get": {
+        "tags": [
+          "Life Event Radar"
+        ],
+        "summary": "Get Radar Status",
+        "operationId": "get_radar_status_api_life_radar_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Radar Status Api Life Radar Status Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/life-radar/actions": {
+      "get": {
+        "tags": [
+          "Life Event Radar"
+        ],
+        "summary": "List Radar Actions",
+        "operationId": "list_radar_actions_api_life_radar_actions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response List Radar Actions Api Life Radar Actions Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/life-radar/actions/{action_id}/audits": {
+      "get": {
+        "tags": [
+          "Life Event Radar"
+        ],
+        "summary": "List Action Audits",
+        "operationId": "list_action_audits_api_life_radar_actions__action_id__audits_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Action Audits Api Life Radar Actions  Action Id  Audits Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/life-radar/actions/{action_id}/pause": {
+      "post": {
+        "tags": [
+          "Life Event Radar"
+        ],
+        "summary": "Pause Action",
+        "operationId": "pause_action_api_life_radar_actions__action_id__pause_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Pause Action Api Life Radar Actions  Action Id  Pause Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/life-radar/actions/{action_id}/resume": {
+      "post": {
+        "tags": [
+          "Life Event Radar"
+        ],
+        "summary": "Resume Action",
+        "operationId": "resume_action_api_life_radar_actions__action_id__resume_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Resume Action Api Life Radar Actions  Action Id  Resume Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/life-radar/actions/{action_id}/cancel": {
+      "post": {
+        "tags": [
+          "Life Event Radar"
+        ],
+        "summary": "Cancel Action",
+        "operationId": "cancel_action_api_life_radar_actions__action_id__cancel_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Cancel Action Api Life Radar Actions  Action Id  Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/life-radar/demo/scan": {
+      "post": {
+        "tags": [
+          "Life Event Radar"
+        ],
+        "summary": "Simulate Radar Scan",
+        "operationId": "simulate_radar_scan_api_life_radar_demo_scan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RadarSimulationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Simulate Radar Scan Api Life Radar Demo Scan Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/channels/webhooks/feishu": {
+      "post": {
+        "tags": [
+          "Channel Gateway"
+        ],
+        "summary": "Process Feishu Webhook",
+        "operationId": "process_feishu_webhook_api_channels_webhooks_feishu_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Process Feishu Webhook Api Channels Webhooks Feishu Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/channels/status": {
+      "get": {
+        "tags": [
+          "Channel Gateway"
+        ],
+        "summary": "Channel Status",
+        "operationId": "channel_status_api_channels_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Channel Status Api Channels Status Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/channels/link-tokens": {
       "post": {
         "tags": [
@@ -1600,6 +3624,67 @@
         }
       }
     },
+    "/api/channels/workers/heartbeat": {
+      "post": {
+        "tags": [
+          "Channel Gateway"
+        ],
+        "summary": "Record Worker Heartbeat",
+        "operationId": "record_worker_heartbeat_api_channels_workers_heartbeat_post",
+        "parameters": [
+          {
+            "name": "X-Channel-Gateway-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Channel-Gateway-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelWorkerHeartbeat"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Record Worker Heartbeat Api Channels Workers Heartbeat Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/demo/reset": {
       "post": {
         "tags": [
@@ -1660,6 +3745,55 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Get Demo Verification Code Api Demo Verifications  Verification Id  Code Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/demo/fraud-release-challenges/{challenge_id}/code": {
+      "get": {
+        "tags": [
+          "Demo"
+        ],
+        "summary": "Get Demo Fraud Release Code",
+        "operationId": "get_demo_fraud_release_code_api_demo_fraud_release_challenges__challenge_id__code_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "challenge_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Challenge Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Demo Fraud Release Code Api Demo Fraud Release Challenges  Challenge Id  Code Get"
                 }
               }
             }
@@ -1754,6 +3888,145 @@
         ],
         "title": "AuthenticatedUserResponse"
       },
+      "ChannelWorkerHeartbeat": {
+        "properties": {
+          "worker_id": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 8,
+            "pattern": "^[A-Za-z0-9:._-]+$",
+            "title": "Worker Id"
+          },
+          "worker_kind": {
+            "type": "string",
+            "enum": [
+              "FEISHU_INBOUND",
+              "LIFE_RADAR"
+            ],
+            "title": "Worker Kind"
+          },
+          "transport": {
+            "type": "string",
+            "enum": [
+              "LONG_CONNECTION",
+              "WEBHOOK",
+              "SCHEDULER"
+            ],
+            "title": "Transport"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "STARTING",
+              "ONLINE",
+              "DEGRADED",
+              "STOPPING"
+            ],
+            "title": "State",
+            "default": "ONLINE"
+          },
+          "last_error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[A-Z][A-Z0-9_]*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Code"
+          },
+          "lease_seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 300.0,
+                "minimum": 30.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lease Seconds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "worker_id",
+          "worker_kind",
+          "transport"
+        ],
+        "title": "ChannelWorkerHeartbeat"
+      },
+      "CommittedExpense": {
+        "properties": {
+          "expense_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Expense Id"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Due Date"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/ConstraintEvidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expense_id",
+          "label",
+          "amount",
+          "due_date",
+          "evidence"
+        ],
+        "title": "CommittedExpense"
+      },
+      "CompleteFundingConstraintsRequest": {
+        "properties": {
+          "planning": {
+            "$ref": "#/components/schemas/FundingPlanningRequest"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "planning",
+          "reason"
+        ],
+        "title": "CompleteFundingConstraintsRequest"
+      },
       "ConfirmationDecisionRequest": {
         "properties": {
           "confirmed": {
@@ -1766,6 +4039,57 @@
           "confirmed"
         ],
         "title": "ConfirmationDecisionRequest"
+      },
+      "ConstraintEvidence": {
+        "properties": {
+          "field_name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Field Name"
+          },
+          "source": {
+            "$ref": "#/components/schemas/EvidenceSource"
+          },
+          "confidence_bp": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Confidence Bp"
+          },
+          "reference_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Id"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "field_name",
+          "source",
+          "confidence_bp"
+        ],
+        "title": "ConstraintEvidence"
       },
       "CreateAgentRunRequest": {
         "properties": {
@@ -1808,6 +4132,299 @@
           "channel"
         ],
         "title": "CreateChannelLinkTokenRequest"
+      },
+      "CreateFundingConsentScopeRequest": {
+        "properties": {
+          "goal_node_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Goal Node Ids"
+          },
+          "amount_lower_bound": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount Lower Bound"
+          },
+          "amount_upper_bound": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount Upper Bound"
+          },
+          "protected_balance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Protected Balance"
+          },
+          "max_single_adjustment": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Max Single Adjustment"
+          },
+          "valid_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Valid From"
+          },
+          "valid_until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Valid Until"
+          },
+          "auto_apply_enabled": {
+            "type": "boolean",
+            "const": false,
+            "title": "Auto Apply Enabled",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "goal_node_ids",
+          "amount_lower_bound",
+          "amount_upper_bound",
+          "protected_balance",
+          "max_single_adjustment",
+          "valid_from",
+          "valid_until"
+        ],
+        "title": "CreateFundingConsentScopeRequest"
+      },
+      "CreateFundingNegotiationRequest": {
+        "properties": {
+          "request_text": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Request Text"
+          },
+          "planning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FundingPlanningRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Run Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_text"
+        ],
+        "title": "CreateFundingNegotiationRequest"
+      },
+      "CreateGuardianInvitationRequest": {
+        "properties": {
+          "guardian_user_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{3,64}$",
+            "title": "Guardian User Id"
+          },
+          "scenarios": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "LARGE_TRANSFER",
+                "NEW_RECIPIENT",
+                "SUSPECTED_FRAUD"
+              ]
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Scenarios"
+          },
+          "amount_lower_bound": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount Lower Bound",
+            "default": "0"
+          },
+          "amount_upper_bound": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount Upper Bound"
+          },
+          "visible_fields": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "RISK_LEVEL",
+                "SCENARIO",
+                "AMOUNT_BAND",
+                "RECIPIENT_MASKED",
+                "RISK_SUMMARY",
+                "OCCURRED_AT"
+              ]
+            },
+            "type": "array",
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Visible Fields"
+          },
+          "consent_valid_until": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Consent Valid Until"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "guardian_user_id",
+          "scenarios",
+          "amount_upper_bound",
+          "consent_valid_until"
+        ],
+        "title": "CreateGuardianInvitationRequest"
+      },
+      "CreateGuardianRiskReviewRequest": {
+        "properties": {
+          "consent_id": {
+            "type": "string",
+            "pattern": "^guardian_consent_[A-Za-z0-9]{8,32}$",
+            "title": "Consent Id"
+          },
+          "scenario": {
+            "type": "string",
+            "enum": [
+              "LARGE_TRANSFER",
+              "NEW_RECIPIENT",
+              "SUSPECTED_FRAUD"
+            ],
+            "title": "Scenario"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "risk_level": {
+            "type": "string",
+            "enum": [
+              "MEDIUM",
+              "HIGH",
+              "CRITICAL"
+            ],
+            "title": "Risk Level"
+          },
+          "recipient_masked": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Masked"
+          },
+          "risk_summary": {
+            "type": "string",
+            "maxLength": 240,
+            "minLength": 5,
+            "title": "Risk Summary"
+          },
+          "source_run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^run_[A-Za-z0-9_-]{4,100}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Run Id"
+          },
+          "expires_in_seconds": {
+            "type": "integer",
+            "maximum": 3600.0,
+            "minimum": 120.0,
+            "title": "Expires In Seconds",
+            "default": 900
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "consent_id",
+          "scenario",
+          "amount",
+          "risk_level",
+          "risk_summary"
+        ],
+        "title": "CreateGuardianRiskReviewRequest"
       },
       "CreateLifeGraphChangeRequest": {
         "properties": {
@@ -1911,6 +4528,16 @@
         ],
         "title": "EventActionCreate"
       },
+      "EvidenceSource": {
+        "type": "string",
+        "enum": [
+          "USER_CONFIRMED",
+          "BANK_CONFIRMED",
+          "MODEL_INFERRED",
+          "FORECAST"
+        ],
+        "title": "EvidenceSource"
+      },
       "FinancialGoalCreate": {
         "properties": {
           "goal_node_id": {
@@ -1975,6 +4602,437 @@
           "target_amount"
         ],
         "title": "FinancialGoalCreate"
+      },
+      "FraudAppealRequest": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 5,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "FraudAppealRequest"
+      },
+      "FraudReleaseVerificationRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "title": "Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "FraudReleaseVerificationRequest"
+      },
+      "FundingDecisionRequest": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "FundingDecisionRequest"
+      },
+      "FundingPlanningRequest": {
+        "properties": {
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/GoalConstraintInput"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Goals"
+          },
+          "constraints": {
+            "$ref": "#/components/schemas/GlobalFundingConstraints"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "goals",
+          "constraints"
+        ],
+        "title": "FundingPlanningRequest"
+      },
+      "GlobalFundingConstraints": {
+        "properties": {
+          "starting_balance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Starting Balance"
+          },
+          "protected_balance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Protected Balance",
+            "default": "0.00"
+          },
+          "allowed_account_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Allowed Account Ids"
+          },
+          "planning_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Planning Start"
+          },
+          "planning_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Planning End"
+          },
+          "committed_expenses": {
+            "items": {
+              "$ref": "#/components/schemas/CommittedExpense"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Committed Expenses"
+          },
+          "incomes": {
+            "items": {
+              "$ref": "#/components/schemas/IncomeEvidence"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Incomes"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ConstraintEvidence"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Evidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "starting_balance",
+          "allowed_account_ids",
+          "planning_start",
+          "planning_end"
+        ],
+        "title": "GlobalFundingConstraints"
+      },
+      "GoalAdjustment": {
+        "properties": {
+          "goal_id": {
+            "type": "string",
+            "title": "Goal Id"
+          },
+          "target_amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Amount"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "funding_policy_patch": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Funding Policy Patch"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "goal_id",
+          "reason"
+        ],
+        "title": "GoalAdjustment"
+      },
+      "GoalConstraintInput": {
+        "properties": {
+          "goal_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Goal Id"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "target_amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Target Amount"
+          },
+          "minimum_amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Minimum Amount"
+          },
+          "reserved_amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Reserved Amount",
+            "default": "0.00"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Due Date"
+          },
+          "rigidity": {
+            "$ref": "#/components/schemas/GoalRigidity"
+          },
+          "can_reduce": {
+            "type": "boolean",
+            "title": "Can Reduce",
+            "default": false
+          },
+          "can_delay": {
+            "type": "boolean",
+            "title": "Can Delay",
+            "default": false
+          },
+          "can_installments": {
+            "type": "boolean",
+            "title": "Can Installments",
+            "default": false
+          },
+          "priority_rank": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority Rank"
+          },
+          "relationship_context": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Context"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ConstraintEvidence"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Evidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "goal_id",
+          "label",
+          "target_amount",
+          "minimum_amount",
+          "due_date",
+          "rigidity"
+        ],
+        "title": "GoalConstraintInput"
+      },
+      "GoalRigidity": {
+        "type": "string",
+        "enum": [
+          "RIGID",
+          "FLEXIBLE"
+        ],
+        "title": "GoalRigidity"
+      },
+      "GuardianInvitationTokenRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 32,
+            "title": "Token"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "GuardianInvitationTokenRequest"
+      },
+      "GuardianOwnerDecisionRequest": {
+        "properties": {
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "confirmed"
+        ],
+        "title": "GuardianOwnerDecisionRequest"
+      },
+      "GuardianReasonRequest": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 2,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "GuardianReasonRequest"
+      },
+      "GuardianRiskDecisionRequest": {
+        "properties": {
+          "risk_acknowledged": {
+            "type": "boolean",
+            "title": "Risk Acknowledged"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "risk_acknowledged"
+        ],
+        "title": "GuardianRiskDecisionRequest"
       },
       "HTTPValidationError": {
         "properties": {
@@ -2096,6 +5154,71 @@
           "occurred_at"
         ],
         "title": "InboundChannelMessage"
+      },
+      "IncomeEvidence": {
+        "properties": {
+          "income_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Income Id"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Label"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "available_on": {
+            "type": "string",
+            "format": "date",
+            "title": "Available On"
+          },
+          "source": {
+            "$ref": "#/components/schemas/EvidenceSource"
+          },
+          "confidence_bp": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Confidence Bp"
+          },
+          "reference_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "income_id",
+          "label",
+          "amount",
+          "available_on",
+          "source",
+          "confidence_bp"
+        ],
+        "title": "IncomeEvidence"
       },
       "LifeEventCreate": {
         "properties": {
@@ -2496,6 +5619,76 @@
         },
         "type": "object",
         "title": "LogoutResponse"
+      },
+      "ProposeCustomFundingPlanRequest": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "model_explanation": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Model Explanation"
+          },
+          "adjustments": {
+            "items": {
+              "$ref": "#/components/schemas/GoalAdjustment"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Adjustments"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "model_explanation",
+          "adjustments"
+        ],
+        "title": "ProposeCustomFundingPlanRequest"
+      },
+      "RadarSimulationRequest": {
+        "properties": {
+          "advance_days": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 1.0,
+            "title": "Advance Days",
+            "default": 30
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RadarSimulationRequest"
+      },
+      "SelectFundingPlanRequest": {
+        "properties": {
+          "plan_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Plan Id"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plan_id",
+          "reason"
+        ],
+        "title": "SelectFundingPlanRequest"
       },
       "ValidationError": {
         "properties": {

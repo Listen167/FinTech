@@ -91,36 +91,28 @@ python -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
 python -m backend.app.integrations.feishu_long_connection
 ```
 
-成功时 SDK 日志会显示已经建立长连接。`GET /api/health` 的 `integrations.feishu.configured` 只表示凭据已配置，不代表 Worker 当前在线；实际在线状态以 Worker 日志和飞书控制台连接状态为准。
+成功时 SDK 日志会显示已经建立长连接。Worker 每隔一段时间向后端续租；`GET /api/health` 的 `integrations.feishu` 会分别返回 `configured` 和 `online`，前端“渠道”工作区也会显示脱敏 Worker 指纹与最近心跳。进程停止且租约过期后会自动显示离线。
 
 ## 5. 首次绑定
 
-当前前端尚未提供渠道绑定页面，可以先使用 Swagger：
+登录前端后点击顶部“渠道”：
 
-1. 打开 `http://127.0.0.1:8000/docs`。
-2. 调用 `POST /api/auth/login` 登录演示账号，取得 Access Token。
-3. 点击 Swagger 右上角 `Authorize`，填写 `Bearer <Access Token>`。
-4. 调用 `POST /api/channels/link-tokens`：
-
-```json
-{
-  "channel": "FEISHU"
-}
-```
-
-5. 在 10 分钟内私聊机器人：
+1. 点击“生成飞书绑定码”，页面会显示剩余时间。
+2. 点击“复制绑定口令”。重新生成会立即作废旧的未使用绑定码。
+3. 在有效期内私聊机器人：
 
 ```text
 绑定 ABCD-EFGH
 ```
 
-6. 收到“渠道身份绑定成功”后，继续发送：
+4. 收到“渠道身份绑定成功”后，刷新页面即可看到脱敏指纹、状态和最近活跃时间。
+5. 继续发送：
 
 ```text
 帮我分析本月账单
 ```
 
-飞书的 Open ID、会话 ID 和消息 ID 只以 HMAC 形式写入数据库。
+外部会话和消息标识只保存 HMAC。用于主动私聊投递的 Open ID 使用服务端密钥加密保存，绝不会通过用户 API 或前端返回；页面只展示 HMAC 脱敏指纹。
 
 ## 6. 安全行为
 

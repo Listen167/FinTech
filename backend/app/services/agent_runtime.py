@@ -22,6 +22,7 @@ from backend.app.errors import error_definition
 from backend.app.repositories.memory import MemoryRepository, repository
 from backend.app.services.bank_service import BankService
 from backend.app.services.audit_integrity import audit_record_digest, next_chain_link
+from backend.app.services.fraud_cooling import FraudCoolingService
 from backend.app.services.life_event_workflow import LifeEventWorkflow
 from backend.app.services.life_graph_service import LifeGraphService, LifeGraphServiceError
 from backend.app.services.life_goal_conflict_service import LifeGoalConflictService
@@ -108,10 +109,15 @@ class AgentRuntime:
         mfa: MfaCodeService | None = None,
         life_graph_service: LifeGraphService | None = None,
         goal_conflict_service: LifeGoalConflictService | None = None,
+        fraud_cooling_service: FraudCoolingService | None = None,
     ) -> None:
         self.repo = repo
         self.bank = BankService(repo)
         self.mfa = mfa or MfaCodeService()
+        self.fraud_cooling = fraud_cooling_service or FraudCoolingService(
+            engine=getattr(repo, "engine", None),
+            mfa=self.mfa,
+        )
         self.life_graph = life_graph_service
         if self.life_graph is None and getattr(repo, "engine", None) is not None:
             self.life_graph = LifeGraphService(repo.engine)
@@ -794,7 +800,7 @@ class AgentRuntime:
             ),
             None,
         )
-        if failed is not None and run.get("state") != "BLOCKED":
+        if failed is not None and run.get("state") not in {"BLOCKED", "COOLING_OFF"}:
             code = failed["runtime"].get("error_code", "TASK_GRAPH_NODE_EXECUTION_FAILED")
             run.update(
                 state="FAILED",
@@ -1033,6 +1039,52 @@ class AgentRuntime:
             "resource_snapshot_hash": _hash_snapshot(resource_snapshot),
         }
 
+    @staticmethod
+    def _cooling_deadline(event: dict) -> str:
+        try:
+            value = datetime.fromisoformat(event["cooling_until"])
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=timezone.utc)
+            return value.astimezone(BEIJING_TIMEZONE).strftime("%m月%d日 %H:%M")
+        except (KeyError, TypeError, ValueError):
+            return "冷静期结束时间"
+
+    def _enter_fraud_cooling(self, run: dict, event: dict, policy: dict) -> None:
+        factors = list(dict.fromkeys([
+            *policy.get("risk_factors", []),
+            "FRAUD_COOLING_OFF",
+        ]))
+        policy.update(
+            level="BLOCKED",
+            action="COOLING_OFF",
+            reason="命中高风险诈骗组合，已对该收款人启动反诈冷静期。",
+            risk_score=max(95, int(policy.get("risk_score", 0))),
+            risk_factors=factors,
+        )
+        run["policy"] = policy
+        run.setdefault("data", {})["fraud_cooling_event"] = event
+        run.update(
+            state="COOLING_OFF",
+            message=(
+                f"检测到对收款人 {event['recipient']['display_name']} 的高风险诈骗迹象，"
+                f"本次请求已阻断。冷静期至 {self._cooling_deadline(event)}；"
+                "请在受信银行 App 查看事实证据或完成强验证，飞书不能解除冷静期。"
+            ),
+            pending_action={"type": "NONE"},
+        )
+
+    def _evaluate_fraud_cooling(
+        self, run: dict, recipient: dict, policy: dict,
+    ) -> dict | None:
+        return self.fraud_cooling.evaluate_transfer(
+            owner_user_id=run["user_id"],
+            run_id=run["run_id"],
+            recipient=recipient,
+            risk_hints=run["intent"].get("risk_hints", []),
+            policy_factors=policy.get("risk_factors", []),
+            message=run.get("user_message", ""),
+        )
+
     def _task_policy_evaluate(self, _: TaskNode, context: TaskExecutionContext) -> TaskNodeOutcome:
         run = context.run
         intent_name = run["intent"]["name"]
@@ -1060,10 +1112,29 @@ class AgentRuntime:
             policy = evaluate_operation("life.event_plan")
         else:
             policy = evaluate_operation("bill.analyze")
-        run["policy"] = policy.model_dump()
+        policy_data = policy.model_dump()
+        if intent_name == "transfer.create":
+            cooling_event = self._evaluate_fraud_cooling(run, recipient, policy_data)
+            if cooling_event is not None:
+                self._enter_fraud_cooling(run, cooling_event, policy_data)
+                self._audit(
+                    run,
+                    "FRAUD_COOLING_POLICY",
+                    "COOLING_OFF",
+                    {
+                        "event_id": cooling_event["event_id"],
+                        "signals": cooling_event["signals"],
+                        "recipient_fingerprint_hint": cooling_event["recipient"]["fingerprint_hint"],
+                    },
+                )
+                return TaskNodeOutcome.failed(
+                    error_code="FRAUD_COOLING_OFF_ACTIVE",
+                    reason="FRAUD_COOLING_OFF_ACTIVE",
+                )
+        run["policy"] = policy_data
         if policy.level.value == "BLOCKED":
             run.update(state="BLOCKED", message=policy.reason, pending_action={"type": "NONE"})
-            self._audit(run, "TASK_POLICY", "BLOCKED", policy.model_dump())
+            self._audit(run, "TASK_POLICY", "BLOCKED", policy_data)
             return TaskNodeOutcome.failed(error_code="POLICY_BLOCKED", reason="POLICY_BLOCKED")
         return self._success(
             f"策略评估结果为 {policy.level.value}",
@@ -1280,6 +1351,27 @@ class AgentRuntime:
                     "preview": preview.copy(),
                 }
             else:
+                cooling_event = self.fraud_cooling.active_for_recipient(
+                    owner_user_id=run["user_id"],
+                    run_id=run["run_id"],
+                    recipient=preview["recipient"],
+                )
+                if cooling_event is not None:
+                    self._enter_fraud_cooling(
+                        run,
+                        cooling_event,
+                        dict(run.get("policy") or {}),
+                    )
+                    self._audit(
+                        run,
+                        "TRANSFER_EXECUTION_COOLING_CHECK",
+                        "COOLING_OFF",
+                        {"event_id": cooling_event["event_id"]},
+                    )
+                    return TaskNodeOutcome.failed(
+                        error_code="FRAUD_COOLING_OFF_ACTIVE",
+                        reason="FRAUD_COOLING_OFF_ACTIVE",
+                    )
                 result = self.bank.execute_transfer(run["user_id"], action["preview_id"])
         except (KeyError, PermissionError, ValueError) as error:
             code = str(error) if str(error) else "TRANSFER_EXECUTION_REJECTED"
@@ -1434,7 +1526,18 @@ class AgentRuntime:
             slots["amount"],
             {"new_recipient": not recipient["trusted"], "risk_hints": run["intent"]["risk_hints"]},
         )
-        run.update(policy=policy.model_dump(), data={"transfer_preview": preview})
+        policy_data = policy.model_dump()
+        run.update(policy=policy_data, data={"transfer_preview": preview})
+        cooling_event = self._evaluate_fraud_cooling(run, recipient, policy_data)
+        if cooling_event is not None:
+            self._enter_fraud_cooling(run, cooling_event, policy_data)
+            self._audit(
+                run,
+                "FRAUD_COOLING_POLICY",
+                "COOLING_OFF",
+                {"event_id": cooling_event["event_id"], "signals": cooling_event["signals"]},
+            )
+            return self._touch(run)
         resource_snapshot = {
             "user_id": run["user_id"],
             "preview_id": preview["preview_id"],
@@ -1452,7 +1555,7 @@ class AgentRuntime:
 
         if policy.level.value == "BLOCKED":
             run.update(state="BLOCKED", message=policy.reason)
-            self._audit(run, "TRANSFER_POLICY", "BLOCKED", policy.model_dump())
+            self._audit(run, "TRANSFER_POLICY", "BLOCKED", policy_data)
         elif policy.level.value == "RED":
             verification = self._create_verification(run, action)
             run.update(
@@ -1460,7 +1563,7 @@ class AgentRuntime:
                 message="该转账风险较高，验证码已发送至账户预留手机号。完成强验证后才会执行。",
                 pending_action={"type": "VERIFICATION", "verification": self._public_verification(verification)},
             )
-            self._audit(run, "TRANSFER_POLICY", "WAITING_VERIFICATION", policy.model_dump())
+            self._audit(run, "TRANSFER_POLICY", "WAITING_VERIFICATION", policy_data)
         else:
             summary = f"向 {recipient['name']} 转账 {slots['amount']:.2f} 元，手续费 0.00 元"
             confirmation = self._create_confirmation(run, action, summary)
@@ -1469,7 +1572,7 @@ class AgentRuntime:
                 message="请核对收款人和金额，确认后才会执行转账。",
                 pending_action={"type": "CONFIRMATION", "confirmation": self._public_confirmation(confirmation)},
             )
-            self._audit(run, "TRANSFER_POLICY", "WAITING_CONFIRMATION", policy.model_dump())
+            self._audit(run, "TRANSFER_POLICY", "WAITING_CONFIRMATION", policy_data)
         return self._touch(run)
 
     def _create_confirmation(self, run: dict, action: dict, summary: str) -> dict:
@@ -1702,6 +1805,8 @@ class AgentRuntime:
     def reset_demo(self, *, user_id: str | None = None) -> None:
         self.mfa.clear()
         self.repo.reset()
+        if user_id is not None:
+            self.fraud_cooling.reset_owner(user_id)
         if user_id is not None and self.life_graph is not None:
             self.life_graph.reset_owner(user_id)
 
@@ -1751,6 +1856,23 @@ class AgentRuntime:
                 run.update(state="SUCCEEDED", message=f"已取消 {result['name']}，后续不再自动扣费。", data={"subscription": result})
                 self._audit(run, "SUBSCRIPTION_CANCEL_EXECUTE", "SUCCEEDED", result)
             elif action["kind"] == "transfer.execute":
+                preview = self.repo.previews[action["preview_id"]]
+                cooling_event = self.fraud_cooling.active_for_recipient(
+                    owner_user_id=run["user_id"],
+                    run_id=run["run_id"],
+                    recipient=preview["recipient"],
+                )
+                if cooling_event is not None:
+                    self._enter_fraud_cooling(
+                        run, cooling_event, dict(run.get("policy") or {})
+                    )
+                    self._audit(
+                        run,
+                        "TRANSFER_EXECUTION_COOLING_CHECK",
+                        "COOLING_OFF",
+                        {"event_id": cooling_event["event_id"]},
+                    )
+                    return self._touch(run)
                 result = self.bank.execute_transfer(run["user_id"], action["preview_id"])
                 run.update(state="SUCCEEDED", message="转账已由银行沙箱确认成功。", data={"transfer_result": result})
                 self._audit(run, "TRANSFER_EXECUTE", "SUCCEEDED", {"transaction_id": result["transaction_id"]})

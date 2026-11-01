@@ -187,7 +187,7 @@ def test_life_graph_supports_multiple_relationship_contexts_and_scheduled_goal()
             goal_node_id="goal_gift_001",
             action_type="REMIND_PURCHASE_PLAN",
             scheduled_at=reminder_at,
-            status="SCHEDULED",
+            status="PENDING",
             idempotency_key="birthday-2026-reminder",
             payload={"suggestions": ["鲜花", "蛋糕"]},
             created_at=now,

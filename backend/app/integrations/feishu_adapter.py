@@ -7,6 +7,7 @@ import json
 import logging
 import re
 from concurrent.futures import Executor, ThreadPoolExecutor
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Protocol
@@ -55,6 +56,12 @@ class FeishuReplier(Protocol):
 
 class ChannelGateway(Protocol):
     def process_inbound(self, payload: InboundChannelMessage) -> dict[str, Any]: ...
+
+
+def _field(value: Any, name: str, default: Any = None) -> Any:
+    if isinstance(value, Mapping):
+        return value.get(name, default)
+    return getattr(value, name, default)
 
 
 class HttpChannelGatewayClient:
@@ -131,41 +138,41 @@ def _event_time(value: Any) -> datetime:
 
 
 def _sender_external_id(sender: Any) -> str:
-    sender_id = getattr(sender, "sender_id", None)
+    sender_id = _field(sender, "sender_id")
     for field in ("open_id", "user_id", "union_id"):
-        value = getattr(sender_id, field, None)
+        value = _field(sender_id, field)
         if value:
             return str(value)
     raise FeishuEventError("FEISHU_SENDER_ID_MISSING")
 
 
 def parse_feishu_event(event: Any) -> ParsedFeishuEvent:
-    event_data = getattr(event, "event", None)
-    sender = getattr(event_data, "sender", None)
-    message = getattr(event_data, "message", None)
+    event_data = _field(event, "event")
+    sender = _field(event_data, "sender")
+    message = _field(event_data, "message")
     if sender is None or message is None:
         raise FeishuEventError("FEISHU_EVENT_PAYLOAD_INVALID")
 
-    message_id = str(getattr(message, "message_id", "") or "")
+    message_id = str(_field(message, "message_id", "") or "")
     if not message_id:
         raise FeishuEventError("FEISHU_MESSAGE_ID_MISSING")
-    if str(getattr(sender, "sender_type", "")).lower() != "user":
+    if str(_field(sender, "sender_type", "")).lower() != "user":
         return ParsedFeishuEvent(message_id=message_id, ignored=True)
 
-    chat_type = str(getattr(message, "chat_type", "") or "")
+    chat_type = str(_field(message, "chat_type", "") or "")
     if chat_type != "p2p":
         return ParsedFeishuEvent(
             message_id=message_id,
             immediate_reply=PRIVATE_CHAT_ONLY_REPLY,
         )
-    if str(getattr(message, "message_type", "") or "") != "text":
+    if str(_field(message, "message_type", "") or "") != "text":
         return ParsedFeishuEvent(
             message_id=message_id,
             immediate_reply=UNSUPPORTED_MESSAGE_REPLY,
         )
 
     try:
-        content = json.loads(str(getattr(message, "content", "") or ""))
+        content = json.loads(str(_field(message, "content", "") or ""))
     except json.JSONDecodeError as error:
         raise FeishuEventError("FEISHU_TEXT_CONTENT_INVALID") from error
     text = content.get("text") if isinstance(content, dict) else None
@@ -174,10 +181,10 @@ def parse_feishu_event(event: Any) -> ParsedFeishuEvent:
     text = text.strip()
 
     tenant_key = (
-        getattr(sender, "tenant_key", None)
-        or getattr(getattr(event, "header", None), "tenant_key", None)
+        _field(sender, "tenant_key")
+        or _field(_field(event, "header"), "tenant_key")
     )
-    chat_id = getattr(message, "chat_id", None)
+    chat_id = _field(message, "chat_id")
     if not tenant_key or not chat_id:
         raise FeishuEventError("FEISHU_EVENT_SCOPE_MISSING")
 
@@ -191,7 +198,7 @@ def parse_feishu_event(event: Any) -> ParsedFeishuEvent:
             external_user_id=_sender_external_id(sender),
             kind="LINK",
             link_code=match.group(1).upper(),
-            occurred_at=_event_time(getattr(message, "create_time", None)),
+            occurred_at=_event_time(_field(message, "create_time")),
         )
     else:
         inbound = InboundChannelMessage(
@@ -202,7 +209,7 @@ def parse_feishu_event(event: Any) -> ParsedFeishuEvent:
             external_user_id=_sender_external_id(sender),
             kind="TEXT",
             text=text,
-            occurred_at=_event_time(getattr(message, "create_time", None)),
+            occurred_at=_event_time(_field(message, "create_time")),
         )
     return ParsedFeishuEvent(message_id=message_id, inbound=inbound)
 
@@ -267,6 +274,44 @@ def build_gateway_card(response: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def deliver_parsed_event(
+    gateway: ChannelGateway,
+    replier: FeishuReplier,
+    parsed: ParsedFeishuEvent,
+) -> dict[str, Any] | None:
+    """长连接和 Webhook 共用的唯一回复与幂等契约。"""
+    if parsed.ignored:
+        return None
+    if parsed.immediate_reply is not None:
+        replier.reply_text(
+            message_id=parsed.message_id,
+            text=parsed.immediate_reply,
+            idempotency_key=_reply_idempotency_key(parsed.message_id),
+        )
+        return None
+    if parsed.inbound is None:
+        return None
+    response = gateway.process_inbound(parsed.inbound)
+    idempotency_key = _reply_idempotency_key(
+        parsed.message_id,
+        response.get("gateway_message_id"),
+    )
+    card = build_gateway_card(response)
+    if card is not None:
+        replier.reply_card(
+            message_id=parsed.message_id,
+            card=card,
+            idempotency_key=idempotency_key,
+        )
+    else:
+        replier.reply_text(
+            message_id=parsed.message_id,
+            text=format_gateway_reply(response),
+            idempotency_key=idempotency_key,
+        )
+    return response
+
+
 class FeishuMessageProcessor:
     def __init__(
         self,
@@ -300,33 +345,7 @@ class FeishuMessageProcessor:
 
     def process(self, parsed: ParsedFeishuEvent) -> None:
         try:
-            if parsed.immediate_reply is not None:
-                self.replier.reply_text(
-                    message_id=parsed.message_id,
-                    text=parsed.immediate_reply,
-                    idempotency_key=_reply_idempotency_key(parsed.message_id),
-                )
-                return
-            if parsed.inbound is None:
-                return
-            response = self.gateway.process_inbound(parsed.inbound)
-            idempotency_key = _reply_idempotency_key(
-                parsed.message_id,
-                response.get("gateway_message_id"),
-            )
-            card = build_gateway_card(response)
-            if card is not None:
-                self.replier.reply_card(
-                    message_id=parsed.message_id,
-                    card=card,
-                    idempotency_key=idempotency_key,
-                )
-            else:
-                self.replier.reply_text(
-                    message_id=parsed.message_id,
-                    text=format_gateway_reply(response),
-                    idempotency_key=idempotency_key,
-                )
+            deliver_parsed_event(self.gateway, self.replier, parsed)
         except ApplicationError as error:
             logger.warning("飞书消息处理失败：%s", error.code)
             self._reply_failure(parsed.message_id, error.message)

@@ -8,6 +8,7 @@ from typing import Any
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    Boolean,
     JSON,
     CheckConstraint,
     DateTime,
@@ -456,6 +457,102 @@ class LifeGraphChangeRequestRecord(Base):
     )
 
 
+class FamilyFundingNegotiationRecord(Base):
+    __tablename__ = "family_funding_negotiations"
+    __table_args__ = (
+        UniqueConstraint(
+            "owner_user_id",
+            "idempotency_key",
+            name="uq_family_funding_negotiations_owner_idempotency",
+        ),
+        CheckConstraint(
+            "status IN ('WAITING_INPUT', 'WAITING_SELECTION', "
+            "'PENDING_CONFIRMATION', 'APPLIED', 'REJECTED', 'CANCELED', "
+            "'STALE', 'WAITING_HUMAN', 'UNDONE')",
+            name="ck_family_funding_negotiations_status",
+        ),
+    )
+
+    negotiation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    source_run_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    request_text: Mapped[str] = mapped_column(Text(), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    constraints: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    plans: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    selected_plan_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    baseline_snapshot_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    candidate_snapshot_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    workflow_checkpoint: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    model_trace: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    missing_fields: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    applied_changes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, index=True)
+    selected_at: Mapped[datetime | None] = mapped_column(DateTime())
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime())
+    created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class FamilyFundingNegotiationAuditRecord(Base):
+    __tablename__ = "family_funding_negotiation_audits"
+
+    audit_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    negotiation_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("family_funding_negotiations.negotiation_id", ondelete="CASCADE"),
+        index=True,
+    )
+    owner_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    from_status: Mapped[str | None] = mapped_column(String(32))
+    to_status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    actor: Mapped[str] = mapped_column(String(128), nullable=False)
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now, index=True)
+
+
+class FundingConsentScopeRecord(Base):
+    __tablename__ = "funding_consent_scopes"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('ACTIVE', 'REVOKED', 'EXPIRED')",
+            name="ck_funding_consent_scopes_status",
+        ),
+        CheckConstraint(
+            "amount_lower_bound >= 0 AND amount_upper_bound >= amount_lower_bound "
+            "AND protected_balance >= 0 AND max_single_adjustment >= 0",
+            name="ck_funding_consent_scopes_amounts",
+        ),
+    )
+
+    scope_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    goal_node_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    amount_lower_bound: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    amount_upper_bound: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    protected_balance: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    max_single_adjustment: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    auto_apply_enabled: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(), nullable=False)
+    valid_until: Mapped[datetime] = mapped_column(DateTime(), nullable=False, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime())
+    created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
 class ChannelLinkTokenRecord(Base):
     __tablename__ = "channel_link_tokens"
     __table_args__ = (
@@ -506,6 +603,7 @@ class ChannelIdentityRecord(Base):
         String(32), nullable=False, default="ACTIVE", index=True
     )
     linked_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now)
+    last_active_at: Mapped[datetime | None] = mapped_column(DateTime(), index=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime())
     created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
@@ -593,3 +691,276 @@ class ChannelMessageRecord(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(), nullable=False, default=utc_now, onupdate=utc_now
     )
+
+
+class ChannelWorkerLeaseRecord(Base):
+    __tablename__ = "channel_worker_leases"
+    __table_args__ = (
+        CheckConstraint(
+            "worker_kind IN ('FEISHU_INBOUND', 'LIFE_RADAR')",
+            name="ck_channel_worker_leases_kind",
+        ),
+        CheckConstraint(
+            "transport IN ('LONG_CONNECTION', 'WEBHOOK', 'SCHEDULER')",
+            name="ck_channel_worker_leases_transport",
+        ),
+        CheckConstraint(
+            "state IN ('STARTING', 'ONLINE', 'DEGRADED', 'STOPPING')",
+            name="ck_channel_worker_leases_state",
+        ),
+    )
+
+    worker_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    worker_kind: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    transport: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(64))
+    started_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False)
+    heartbeat_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class FraudRiskEventRecord(Base):
+    __tablename__ = "fraud_risk_events"
+    __table_args__ = (
+        UniqueConstraint("active_scope_key", name="uq_fraud_risk_events_active_scope"),
+        CheckConstraint(
+            "status IN ('COOLING_OFF', 'RELEASED', 'EXPIRED')",
+            name="ck_fraud_risk_events_status",
+        ),
+        CheckConstraint(
+            "appeal_status IN ('NONE', 'SUBMITTED')",
+            name="ck_fraud_risk_events_appeal_status",
+        ),
+        CheckConstraint("retry_count >= 0", name="ck_fraud_risk_events_retry_count"),
+    )
+
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    trigger_run_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    recipient_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    active_scope_key: Mapped[str | None] = mapped_column(String(160))
+    recipient_display: Mapped[str] = mapped_column(String(100), nullable=False)
+    recipient_account_masked: Mapped[str | None] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="COOLING_OFF", index=True
+    )
+    signals: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    message_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    appeal_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="NONE", index=True
+    )
+    appeal_reason: Mapped[str | None] = mapped_column(Text())
+    appeal_submitted_at: Mapped[datetime | None] = mapped_column(DateTime())
+    triggered_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, index=True)
+    cooling_until: Mapped[datetime] = mapped_column(DateTime(), nullable=False, index=True)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime())
+    release_method: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class FraudReleaseChallengeRecord(Base):
+    __tablename__ = "fraud_release_challenges"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('PENDING', 'VERIFIED', 'EXPIRED', 'LOCKED', 'SUPERSEDED')",
+            name="ck_fraud_release_challenges_status",
+        ),
+        CheckConstraint("failed_attempts >= 0", name="ck_fraud_release_challenges_attempts"),
+    )
+
+    challenge_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    event_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("fraud_risk_events.event_id", ondelete="CASCADE"),
+        index=True,
+    )
+    owner_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="PENDING", index=True
+    )
+    otp_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    delivery_channel: Mapped[str] = mapped_column(String(32), nullable=False, default="SMS")
+    issued_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, index=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime())
+    created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class FraudRiskAuditRecord(Base):
+    __tablename__ = "fraud_risk_audits"
+
+    audit_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    event_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("fraud_risk_events.event_id", ondelete="CASCADE"),
+        index=True,
+    )
+    owner_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    actor: Mapped[str] = mapped_column(String(64), nullable=False)
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now, index=True)
+
+
+class GuardianInvitationRecord(Base):
+    __tablename__ = "guardian_invitations"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('PENDING', 'ACCEPTED', 'REJECTED', 'CANCELED', 'EXPIRED')",
+            name="ck_guardian_invitations_status",
+        ),
+        CheckConstraint(
+            "amount_lower_bound >= 0 AND amount_upper_bound >= amount_lower_bound",
+            name="ck_guardian_invitations_amounts",
+        ),
+    )
+
+    invitation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    guardian_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    scenarios: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    amount_lower_bound: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    amount_upper_bound: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    visible_fields: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    consent_valid_until: Mapped[datetime] = mapped_column(DateTime(), nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, index=True)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime())
+    created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class GuardianConsentRecord(Base):
+    __tablename__ = "guardian_consents"
+    __table_args__ = (
+        UniqueConstraint("invitation_id", name="uq_guardian_consents_invitation"),
+        UniqueConstraint("active_pair_key", name="uq_guardian_consents_active_pair"),
+        CheckConstraint(
+            "status IN ('ACTIVE', 'REVOKED', 'EXPIRED')",
+            name="ck_guardian_consents_status",
+        ),
+        CheckConstraint(
+            "amount_lower_bound >= 0 AND amount_upper_bound >= amount_lower_bound",
+            name="ck_guardian_consents_amounts",
+        ),
+    )
+
+    consent_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    invitation_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("guardian_invitations.invitation_id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    owner_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    guardian_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    active_pair_key: Mapped[str | None] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    scenarios: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    amount_lower_bound: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    amount_upper_bound: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    visible_fields: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    activated_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False)
+    valid_until: Mapped[datetime] = mapped_column(DateTime(), nullable=False, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime())
+    revoked_by_user_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    revoke_reason: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class GuardianRiskReviewRecord(Base):
+    __tablename__ = "guardian_risk_reviews"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('AWAITING_OWNER', 'AWAITING_GUARDIAN', 'ACKNOWLEDGED', "
+            "'REJECTED', 'EXPIRED', 'CANCELED')",
+            name="ck_guardian_risk_reviews_status",
+        ),
+        CheckConstraint("amount >= 0", name="ck_guardian_risk_reviews_amount"),
+    )
+
+    review_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    consent_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("guardian_consents.consent_id", ondelete="CASCADE"), index=True
+    )
+    owner_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    guardian_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    source_run_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    scenario: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    risk_level: Mapped[str] = mapped_column(String(16), nullable=False)
+    recipient_masked: Mapped[str | None] = mapped_column(String(64))
+    risk_summary: Mapped[str] = mapped_column(String(500), nullable=False)
+    visible_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    owner_note: Mapped[str | None] = mapped_column(String(500))
+    guardian_note: Mapped[str | None] = mapped_column(String(500))
+    owner_decided_at: Mapped[datetime | None] = mapped_column(DateTime())
+    guardian_decided_at: Mapped[datetime | None] = mapped_column(DateTime())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class GuardianAuditRecord(Base):
+    __tablename__ = "guardian_audits"
+
+    audit_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    consent_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    invitation_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    review_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    owner_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    guardian_user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    actor_user_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    result: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(), nullable=False, default=utc_now, index=True)

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import hashlib
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -15,6 +16,7 @@ from backend.app.db.models import (
     ChannelIdentityRecord,
     ChannelLinkTokenRecord,
     ChannelMessageRecord,
+    ChannelWorkerLeaseRecord,
 )
 from backend.app.errors import ApplicationError
 
@@ -35,14 +37,16 @@ class ChannelGatewayRepository:
 
     @staticmethod
     def _identity_payload(record: ChannelIdentityRecord) -> dict[str, Any]:
+        fingerprint = record.external_user_id_hash
         return {
             "identity_id": record.identity_id,
             "user_id": record.user_id,
             "channel": record.channel,
             "tenant_id": record.tenant_id,
-            "external_user_fingerprint": record.external_user_id_hash[:12],
+            "external_user_fingerprint": f"{fingerprint[:6]}****{fingerprint[-4:]}",
             "status": record.status,
             "linked_at": _iso_utc(record.linked_at),
+            "last_active_at": _iso_utc(record.last_active_at),
             "revoked_at": _iso_utc(record.revoked_at),
             "created_at": _iso_utc(record.created_at),
             "updated_at": _iso_utc(record.updated_at),
@@ -80,6 +84,17 @@ class ChannelGatewayRepository:
             created_at=now,
         )
         with Session(self.engine) as database, database.begin():
+            existing_tokens = database.scalars(
+                select(ChannelLinkTokenRecord)
+                .where(
+                    ChannelLinkTokenRecord.user_id == user_id,
+                    ChannelLinkTokenRecord.channel == channel,
+                    ChannelLinkTokenRecord.status == "PENDING",
+                )
+                .with_for_update()
+            )
+            for existing in existing_tokens:
+                existing.status = "EXPIRED" if existing.expires_at < now else "CANCELED"
             database.add(record)
             database.flush()
             return {
@@ -139,6 +154,7 @@ class ChannelGatewayRepository:
                         external_user_id_ciphertext=external_user_id_ciphertext,
                         status="ACTIVE",
                         linked_at=now,
+                        last_active_at=now,
                         created_at=now,
                         updated_at=now,
                     )
@@ -147,6 +163,7 @@ class ChannelGatewayRepository:
                     identity.status = "ACTIVE"
                     identity.external_user_id_ciphertext = external_user_id_ciphertext
                     identity.linked_at = now
+                    identity.last_active_at = now
                     identity.revoked_at = None
                     identity.updated_at = now
 
@@ -189,6 +206,7 @@ class ChannelGatewayRepository:
             if identity is None or identity.status != "ACTIVE":
                 raise ApplicationError("CHANNEL_IDENTITY_NOT_FOUND")
             identity.external_user_id_ciphertext = external_user_id_ciphertext
+            identity.last_active_at = _now()
             identity.updated_at = _now()
 
     def get_active_delivery_identity(
@@ -398,3 +416,76 @@ class ChannelGatewayRepository:
                 "agent_session_id": record.agent_session_id,
                 "status": record.status,
             }
+
+    def record_worker_heartbeat(
+        self,
+        *,
+        worker_id: str,
+        worker_kind: str,
+        transport: str,
+        state: str,
+        lease_seconds: int,
+        last_error_code: str | None = None,
+    ) -> dict[str, Any]:
+        now = _now()
+        with Session(self.engine) as database, database.begin():
+            record = database.scalar(
+                select(ChannelWorkerLeaseRecord)
+                .where(ChannelWorkerLeaseRecord.worker_id == worker_id)
+                .with_for_update()
+            )
+            if record is None:
+                record = ChannelWorkerLeaseRecord(
+                    worker_id=worker_id,
+                    worker_kind=worker_kind,
+                    transport=transport,
+                    state=state,
+                    last_error_code=last_error_code,
+                    started_at=now,
+                    heartbeat_at=now,
+                    expires_at=now + timedelta(seconds=lease_seconds),
+                    created_at=now,
+                    updated_at=now,
+                )
+                database.add(record)
+            else:
+                if record.worker_kind != worker_kind or record.transport != transport:
+                    raise ApplicationError("CHANNEL_WORKER_ID_CONFLICT")
+                record.state = state
+                record.last_error_code = last_error_code
+                record.heartbeat_at = now
+                record.expires_at = now + timedelta(seconds=lease_seconds)
+                record.updated_at = now
+            database.flush()
+            return self._worker_payload(record, now=now)
+
+    @staticmethod
+    def _worker_payload(
+        record: ChannelWorkerLeaseRecord,
+        *,
+        now: datetime,
+    ) -> dict[str, Any]:
+        digest = hashlib.sha256(record.worker_id.encode("utf-8")).hexdigest()
+        online = record.state in {"STARTING", "ONLINE", "DEGRADED"} and record.expires_at >= now
+        return {
+            "worker_fingerprint": f"{digest[:6]}****{digest[-4:]}",
+            "worker_kind": record.worker_kind,
+            "transport": record.transport,
+            "state": record.state if online else "OFFLINE",
+            "reported_state": record.state,
+            "online": online,
+            "last_error_code": record.last_error_code,
+            "started_at": _iso_utc(record.started_at),
+            "heartbeat_at": _iso_utc(record.heartbeat_at),
+            "expires_at": _iso_utc(record.expires_at),
+        }
+
+    def list_worker_statuses(self) -> list[dict[str, Any]]:
+        now = _now()
+        with Session(self.engine) as database:
+            records = database.scalars(
+                select(ChannelWorkerLeaseRecord).order_by(
+                    ChannelWorkerLeaseRecord.heartbeat_at.desc()
+                )
+            )
+            return [self._worker_payload(record, now=now) for record in records]

@@ -17,6 +17,19 @@ class CreateChannelLinkTokenRequest(StrictChannelModel):
     channel: ChannelName
 
 
+class ChannelWorkerHeartbeat(StrictChannelModel):
+    worker_id: str = Field(min_length=8, max_length=160, pattern=r"^[A-Za-z0-9:._-]+$")
+    worker_kind: Literal["FEISHU_INBOUND", "LIFE_RADAR"]
+    transport: Literal["LONG_CONNECTION", "WEBHOOK", "SCHEDULER"]
+    state: Literal["STARTING", "ONLINE", "DEGRADED", "STOPPING"] = "ONLINE"
+    last_error_code: str | None = Field(
+        default=None,
+        max_length=64,
+        pattern=r"^[A-Z][A-Z0-9_]*$",
+    )
+    lease_seconds: int | None = Field(default=None, ge=30, le=300)
+
+
 class InboundChannelMessage(StrictChannelModel):
     schema_version: Literal["1.0"] = "1.0"
     channel: ChannelName

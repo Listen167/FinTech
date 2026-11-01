@@ -1,13 +1,16 @@
 """用户侧渠道绑定管理与适配器统一入站接口。"""
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from backend.app.dependencies.auth import get_current_auth
 from backend.app.dependencies.channel_gateway import (
     get_channel_gateway_service,
     require_channel_gateway_key,
 )
+from backend.app.dependencies.feishu_webhook import get_feishu_webhook_handler
+from backend.app.integrations.feishu_webhook import FeishuWebhookHandler
 from backend.app.schemas.channel import (
+    ChannelWorkerHeartbeat,
     CreateChannelLinkTokenRequest,
     InboundChannelMessage,
 )
@@ -16,6 +19,28 @@ from backend.app.services.channel_gateway import ChannelGatewayService
 
 
 router = APIRouter()
+
+
+@router.post("/webhooks/feishu")
+async def process_feishu_webhook(
+    request: Request,
+    handler: FeishuWebhookHandler = Depends(get_feishu_webhook_handler),
+) -> dict:
+    return handler.handle(headers=request.headers, raw_body=await request.body())
+
+
+@router.get("/status")
+def channel_status(
+    _: AuthContext = Depends(get_current_auth),
+    service: ChannelGatewayService = Depends(get_channel_gateway_service),
+) -> dict:
+    from backend.app.core.config import settings
+
+    return service.management_status(
+        gateway_configured=settings.channel_gateway_configured,
+        feishu_configured=settings.feishu_configured,
+        webhook_configured=settings.feishu_webhook_configured,
+    )
 
 
 @router.post("/link-tokens", status_code=status.HTTP_201_CREATED)
@@ -53,3 +78,17 @@ def process_inbound_message(
     service: ChannelGatewayService = Depends(get_channel_gateway_service),
 ) -> dict:
     return service.process_inbound(payload)
+
+
+@router.post("/workers/heartbeat")
+def record_worker_heartbeat(
+    payload: ChannelWorkerHeartbeat,
+    _: None = Depends(require_channel_gateway_key),
+    service: ChannelGatewayService = Depends(get_channel_gateway_service),
+) -> dict:
+    from backend.app.core.config import settings
+
+    return service.record_worker_heartbeat(
+        payload,
+        default_lease_seconds=settings.channel_worker_lease_seconds,
+    )

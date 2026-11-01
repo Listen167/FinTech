@@ -162,6 +162,24 @@ ERROR_CATALOG: dict[str, ErrorDefinition] = {
     "CHANNEL_PROCESSING_FAILED": ErrorDefinition(
         503, "渠道消息处理失败，系统未声明业务执行成功。", True
     ),
+    "CHANNEL_WORKER_ID_CONFLICT": ErrorDefinition(
+        409, "Worker 标识已用于其他渠道类型，已拒绝覆盖心跳。"
+    ),
+    "FEISHU_WEBHOOK_NOT_CONFIGURED": ErrorDefinition(
+        503, "飞书 Webhook 尚未完成验签与加密配置。", True
+    ),
+    "FEISHU_WEBHOOK_SIGNATURE_INVALID": ErrorDefinition(
+        401, "飞书 Webhook 签名校验失败。"
+    ),
+    "FEISHU_WEBHOOK_TIMESTAMP_INVALID": ErrorDefinition(
+        401, "飞书 Webhook 请求时间超出允许范围。"
+    ),
+    "FEISHU_WEBHOOK_TOKEN_INVALID": ErrorDefinition(
+        401, "飞书 Webhook 验证令牌不匹配。"
+    ),
+    "FEISHU_WEBHOOK_PAYLOAD_INVALID": ErrorDefinition(
+        400, "飞书 Webhook 事件格式不正确。"
+    ),
     "SCHEDULED_ACTION_NOT_FOUND": ErrorDefinition(404, "提醒动作不存在或无权访问。"),
     "SCHEDULED_ACTION_NOT_CONTROLLABLE": ErrorDefinition(
         409, "该提醒已结束或等待人工处理，不能执行当前操作。"
@@ -183,6 +201,65 @@ ERROR_CATALOG: dict[str, ErrorDefinition] = {
     ),
     "FEISHU_PROACTIVE_SEND_FAILED": ErrorDefinition(
         503, "飞书主动提醒发送失败，系统未声明通知成功。", True
+    ),
+    "FUNDING_NEGOTIATION_NOT_CONFIGURED": ErrorDefinition(
+        503, "家庭资金协商服务尚未配置数据库。", True
+    ),
+    "FUNDING_NEGOTIATION_NOT_FOUND": ErrorDefinition(404, "资金协商记录不存在或无权访问。"),
+    "FUNDING_IDEMPOTENCY_CONFLICT": ErrorDefinition(409, "该幂等键已用于另一项资金协商。"),
+    "FUNDING_NEGOTIATION_NOT_SELECTABLE": ErrorDefinition(409, "当前协商不处于可选择方案状态。"),
+    "FUNDING_NEGOTIATION_NOT_CONFIRMABLE": ErrorDefinition(409, "当前协商不处于可确认状态。"),
+    "FUNDING_NEGOTIATION_NOT_COMPLETABLE": ErrorDefinition(409, "当前协商不处于约束补充状态。"),
+    "FUNDING_NEGOTIATION_NOT_CONTROLLABLE": ErrorDefinition(409, "当前协商已经结束，不能执行该控制操作。"),
+    "FUNDING_NEGOTIATION_NOT_UNDOABLE": ErrorDefinition(409, "当前协商没有可撤销的已应用变更。"),
+    "FUNDING_NEGOTIATION_EXPIRED": ErrorDefinition(409, "资金协商已经过期，请重新计算。"),
+    "FUNDING_PLAN_NOT_FOUND": ErrorDefinition(404, "所选资金方案不存在或已经失效。"),
+    "FUNDING_PLAN_INFEASIBLE": ErrorDefinition(409, "不可行方案不能进入确认阶段。"),
+    "FUNDING_MODEL_PLAN_REJECTED": ErrorDefinition(409, "模型建议未通过确定性资金约束校验，已丢弃。"),
+    "FUNDING_SNAPSHOT_CHANGED": ErrorDefinition(
+        409, "余额或目标已变化，旧方案已失效并按最新数据重新计算。", True
+    ),
+    "FUNDING_UNDO_CONFLICT": ErrorDefinition(409, "目标在应用后又发生变化，不能自动撤销，请转人工处理。"),
+    "FUNDING_ACCOUNT_NOT_FOUND": ErrorDefinition(404, "允许使用的账户不存在或无权访问。"),
+    "FUNDING_CURRENCY_NOT_SUPPORTED": ErrorDefinition(409, "当前协商仅支持人民币账户。"),
+    "FUNDING_BANK_INCOME_UNVERIFIED": ErrorDefinition(409, "银行确认收入缺少可核验的入账流水，不能进入保证方案。"),
+    "FUNDING_GOAL_DUE_DATE_REQUIRED": ErrorDefinition(409, "资金目标缺少截止日期，请先补充。"),
+    "FUNDING_CONSENT_SCOPE_NOT_FOUND": ErrorDefinition(404, "资金调整授权范围不存在或无权访问。"),
+    "FUNDING_CONSENT_SCOPE_NOT_ACTIVE": ErrorDefinition(409, "资金调整授权范围已经失效或撤销。"),
+    "FUNDING_CONSENT_SCOPE_EXPIRED": ErrorDefinition(409, "资金调整授权范围已经到期。"),
+    "GUARDIAN_USER_NOT_FOUND": ErrorDefinition(404, "指定的守护用户不存在或已经停用。"),
+    "GUARDIAN_CIRCLE_NOT_CONFIGURED": ErrorDefinition(503, "家庭守护圈需要启用数据库。", True),
+    "GUARDIAN_SELF_INVITATION_FORBIDDEN": ErrorDefinition(409, "不能邀请自己成为自己的守护人。"),
+    "GUARDIAN_INVITATION_INVALID": ErrorDefinition(400, "守护邀请令牌无效。"),
+    "GUARDIAN_INVITATION_NOT_FOUND": ErrorDefinition(404, "守护邀请不存在或无权访问。"),
+    "GUARDIAN_INVITATION_ALREADY_PENDING": ErrorDefinition(409, "双方已有待处理的守护邀请。"),
+    "GUARDIAN_INVITATION_NOT_PENDING": ErrorDefinition(409, "守护邀请已不处于待处理状态。"),
+    "GUARDIAN_INVITATION_EXPIRED": ErrorDefinition(409, "守护邀请已经过期，请重新创建。"),
+    "GUARDIAN_INVITATION_REPLAYED": ErrorDefinition(409, "守护邀请已经处理，不能重复使用。"),
+    "GUARDIAN_CONSENT_ALREADY_ACTIVE": ErrorDefinition(409, "双方已有生效中的守护授权。"),
+    "GUARDIAN_CONSENT_VALIDITY_INVALID": ErrorDefinition(422, "守护授权有效期必须在十分钟至一年之间。"),
+    "GUARDIAN_CONSENT_NOT_FOUND": ErrorDefinition(404, "守护授权不存在或无权访问。"),
+    "GUARDIAN_CONSENT_NOT_ACTIVE": ErrorDefinition(409, "守护授权已撤销或到期，不能继续查看或确认。"),
+    "GUARDIAN_SCOPE_VIOLATION": ErrorDefinition(403, "当前风险请求超出已同意的场景或金额范围。"),
+    "GUARDIAN_SENSITIVE_FIELD_FORBIDDEN": ErrorDefinition(422, "守护摘要不能包含未脱敏的账号或连续敏感数字。"),
+    "GUARDIAN_RISK_REVIEW_NOT_FOUND": ErrorDefinition(404, "守护风险确认不存在或无权访问。"),
+    "GUARDIAN_RISK_REVIEW_NOT_OWNER_CONFIRMABLE": ErrorDefinition(409, "当前风险请求已不等待本人确认。"),
+    "GUARDIAN_RISK_REVIEW_NOT_GUARDIAN_CONFIRMABLE": ErrorDefinition(409, "当前风险请求尚未由本人确认或已经结束。"),
+    "FRAUD_EVENT_NOT_FOUND": ErrorDefinition(404, "反诈风险事件不存在或无权访问。"),
+    "FRAUD_EVENT_NOT_ACTIVE": ErrorDefinition(409, "该反诈冷静期已经解除或到期。"),
+    "FRAUD_APPEAL_ALREADY_SUBMITTED": ErrorDefinition(409, "该风险事件已经提交过误报申诉。"),
+    "FRAUD_COOLING_OFF_ACTIVE": ErrorDefinition(
+        409, "同一收款人仍处于反诈冷静期，本次资金请求已阻断。"
+    ),
+    "FRAUD_RELEASE_CHANNEL_FORBIDDEN": ErrorDefinition(
+        403, "冷静期只能在受信银行 App 中通过强验证解除，飞书或其他 IM 无权解除。"
+    ),
+    "FRAUD_RELEASE_CHALLENGE_NOT_FOUND": ErrorDefinition(404, "冷静期释放验证不存在或无权访问。"),
+    "FRAUD_RELEASE_CHALLENGE_NOT_PENDING": ErrorDefinition(409, "冷静期释放验证已处理，不能重复提交。"),
+    "FRAUD_RELEASE_CHALLENGE_EXPIRED": ErrorDefinition(409, "冷静期释放验证码已过期，请重新获取。"),
+    "FRAUD_RELEASE_VERIFICATION_FAILED": ErrorDefinition(409, "冷静期释放验证码不正确。"),
+    "FRAUD_RELEASE_VERIFICATION_LOCKED": ErrorDefinition(
+        409, "冷静期释放验证连续失败，当前挑战已锁定。"
     ),
 }
 

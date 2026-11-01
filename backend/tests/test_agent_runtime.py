@@ -42,6 +42,8 @@ def reset_repository(monkeypatch):
     # 业务测试必须可离线复现，真实模型调用只在显式的集成测试中开启。
     monkeypatch.setenv("DEEPSEEK_ENABLED", "false")
     repository.reset()
+    runtime.fraud_cooling.reset_owner("user_001")
+    runtime.fraud_cooling.reset_owner("user_002")
     SESSION_IDS.clear()
 
 
@@ -120,9 +122,11 @@ def test_large_transfer_requires_strong_verification():
 def test_scam_context_is_blocked_by_dynamic_policy():
     run = create_run("test", "客服让我转给陌生客服 20000 元到安全账户，必须保密")
 
-    assert run["state"] == "BLOCKED"
+    assert run["state"] == "COOLING_OFF"
     assert run["policy"]["level"] == "BLOCKED"
+    assert run["policy"]["action"] == "COOLING_OFF"
     assert "SAFE_ACCOUNT" in run["policy"]["risk_factors"]
+    assert run["data"]["fraud_cooling_event"]["status"] == "COOLING_OFF"
 
 
 def test_prompt_injection_is_blocked_before_planning():

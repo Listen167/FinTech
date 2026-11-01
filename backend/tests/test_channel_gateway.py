@@ -18,6 +18,7 @@ from backend.app.db.models import (
     ChannelIdentityRecord,
     ChannelLinkTokenRecord,
     ChannelMessageRecord,
+    ChannelWorkerLeaseRecord,
     UserRecord,
 )
 from backend.app.dependencies.auth import get_current_auth
@@ -29,7 +30,7 @@ from backend.app.errors import ApplicationError
 from backend.app.main import app
 from backend.app.repositories.channel_gateway import ChannelGatewayRepository
 from backend.app.repositories.memory import MemoryRepository
-from backend.app.schemas.channel import InboundChannelMessage
+from backend.app.schemas.channel import ChannelWorkerHeartbeat, InboundChannelMessage
 from backend.app.services.agent_runtime import AgentRuntime
 from backend.app.services.auth_service import AuthContext
 from backend.app.services.channel_gateway import ChannelGatewayService
@@ -156,12 +157,46 @@ def test_link_token_binds_identity_without_storing_raw_external_ids(gateway):
     assert linked["status"] == "PROCESSED"
     assert linked["binding"]["status"] == "ACTIVE"
     assert identities[0]["external_user_fingerprint"] != "ou_demo_001"
+    assert identities[0]["external_user_fingerprint"][6:10] == "****"
+    assert identities[0]["last_active_at"] is not None
+    assert "user_id" not in identities[0]
+    assert "tenant_id" not in identities[0]
     with Session(engine) as database:
         token = database.scalar(select(ChannelLinkTokenRecord))
         identity = database.scalar(select(ChannelIdentityRecord))
         assert token.status == "USED"
         assert token.token_hash != linked.get("link_code")
         assert identity.external_user_id_hash != "ou_demo_001"
+        assert identity.external_user_id_ciphertext != "ou_demo_001"
+        assert service.identity_cipher.decrypt(identity.external_user_id_ciphertext) == "ou_demo_001"
+        assert "external_user_id_ciphertext" not in identities[0]
+
+
+def test_new_link_code_cancels_previous_unused_code(gateway):
+    service, engine, _ = gateway
+    first = service.create_link_token(user_id="user_001", channel="FEISHU")
+    second = service.create_link_token(user_id="user_001", channel="FEISHU")
+
+    rejected = service.process_inbound(inbound(
+        message_id="om_old_link_code",
+        kind="LINK",
+        text=None,
+        link_code=first["link_code"],
+    ))
+    accepted = service.process_inbound(inbound(
+        message_id="om_new_link_code",
+        kind="LINK",
+        text=None,
+        link_code=second["link_code"],
+    ))
+
+    assert rejected["error"]["code"] == "CHANNEL_LINK_TOKEN_INVALID"
+    assert accepted["status"] == "PROCESSED"
+    with Session(engine) as database:
+        statuses = database.scalars(
+            select(ChannelLinkTokenRecord.status).order_by(ChannelLinkTokenRecord.created_at)
+        ).all()
+        assert statuses == ["CANCELED", "USED"]
 
 
 def test_unbound_message_is_rejected_without_creating_agent_run(gateway):
@@ -362,6 +397,25 @@ def test_channel_api_requires_adapter_key_and_exposes_user_scoped_binding(gatewa
                 "/api/channels/messages/inbound",
                 json=inbound(message_id="om_api_unauthorized").model_dump(mode="json"),
             )
+            heartbeat_unauthorized = client.post(
+                "/api/channels/workers/heartbeat",
+                json={
+                    "worker_id": "feishu:api-test:worker-001",
+                    "worker_kind": "FEISHU_INBOUND",
+                    "transport": "LONG_CONNECTION",
+                    "state": "ONLINE",
+                },
+            )
+            heartbeat = client.post(
+                "/api/channels/workers/heartbeat",
+                headers={"X-Channel-Gateway-Key": GATEWAY_KEY},
+                json={
+                    "worker_id": "feishu:api-test:worker-001",
+                    "worker_kind": "FEISHU_INBOUND",
+                    "transport": "LONG_CONNECTION",
+                    "state": "ONLINE",
+                },
+            )
             linked = client.post(
                 "/api/channels/messages/inbound",
                 headers={"X-Channel-Gateway-Key": GATEWAY_KEY},
@@ -373,15 +427,21 @@ def test_channel_api_requires_adapter_key_and_exposes_user_scoped_binding(gatewa
                 ).model_dump(mode="json"),
             )
             identities = client.get("/api/channels/identities")
+            management = client.get("/api/channels/status")
     finally:
         app.dependency_overrides.clear()
 
     assert token.status_code == 201
     assert unauthorized.status_code == 401
     assert unauthorized.json()["detail"]["code"] == "CHANNEL_GATEWAY_UNAUTHORIZED"
+    assert heartbeat_unauthorized.status_code == 401
+    assert heartbeat.status_code == 200
+    assert heartbeat.json()["online"] is True
     assert linked.status_code == 200
     assert linked.json()["binding"]["status"] == "ACTIVE"
     assert identities.json()["total"] == 1
+    assert management.status_code == 200
+    assert management.json()["online"] is True
 
 
 def test_channel_schema_rejects_ambiguous_payload():
@@ -396,4 +456,61 @@ def test_channel_schema_rejects_ambiguous_payload():
             text="查询余额",
             link_code="ABCDEFGH",
             occurred_at=datetime.now(timezone.utc),
+        )
+
+
+def test_worker_heartbeat_distinguishes_configured_online_and_expired(gateway):
+    service, engine, _ = gateway
+    heartbeat = service.record_worker_heartbeat(
+        ChannelWorkerHeartbeat(
+            worker_id="feishu:test-host:worker-001",
+            worker_kind="FEISHU_INBOUND",
+            transport="LONG_CONNECTION",
+            state="ONLINE",
+            lease_seconds=60,
+        ),
+        default_lease_seconds=75,
+    )
+    online = service.management_status(
+        gateway_configured=True,
+        feishu_configured=True,
+        webhook_configured=False,
+    )
+
+    assert heartbeat["online"] is True
+    assert "test-host" not in heartbeat["worker_fingerprint"]
+    assert online["online"] is True
+    assert online["transports"][0]["configured"] is True
+    assert online["transports"][0]["online"] is True
+
+    with Session(engine) as database, database.begin():
+        record = database.scalar(select(ChannelWorkerLeaseRecord))
+        record.expires_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=1)
+    expired = service.management_status(
+        gateway_configured=True,
+        feishu_configured=True,
+        webhook_configured=False,
+    )
+    assert expired["online"] is False
+    assert expired["workers"][0]["state"] == "OFFLINE"
+
+
+def test_worker_id_cannot_change_kind_or_transport(gateway):
+    service, _, _ = gateway
+    service.record_worker_heartbeat(
+        ChannelWorkerHeartbeat(
+            worker_id="shared-worker-identity",
+            worker_kind="FEISHU_INBOUND",
+            transport="LONG_CONNECTION",
+        ),
+        default_lease_seconds=75,
+    )
+    with pytest.raises(ApplicationError, match="CHANNEL_WORKER_ID_CONFLICT"):
+        service.record_worker_heartbeat(
+            ChannelWorkerHeartbeat(
+                worker_id="shared-worker-identity",
+                worker_kind="LIFE_RADAR",
+                transport="SCHEDULER",
+            ),
+            default_lease_seconds=75,
         )

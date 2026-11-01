@@ -13,11 +13,14 @@
 | 智能转账 | 黄色/红色 | 中文参数提取、联系人核验、动态风险、确认/OTP、执行回执 |
 | 跨场景联动 | 绿色分析 | 账单与订阅联合体检，写操作拆分确认 |
 | 安全防护 | 独立控制 | 中英文注入拦截、诈骗语义、快照哈希、重放检测、失败熔断、审计 |
+| 反诈冷静期 | 强制阻断 | 收款人 HMAC 指纹、跨 Run 改写重试阻断、事实证据、误报申诉、受信 App MFA 释放 |
 | 用户隔离 | 后端强制 | 两个虚拟用户、资源所有权、跨用户访问拒绝、用户级幂等 |
 | 会话恢复 | 后端强制 | 服务端生成会话 ID、会话列表、跨刷新与跨设备恢复 |
 | 生活事件图 | 候选确认 | 多重家庭关系、生日/学费事件、资金目标冲突证据、LangGraph 恢复与人工接管 |
-| 多渠道网关 | 后端强制 | 一次性身份绑定、统一消息协议、渠道会话映射、双层幂等、安全 App 跳转 |
-| 飞书接入 | 渠道受限 | 官方长连接、私聊处理、结果型多轮追问、安全操作卡片；IM 不获得资金授权 |
+| 家庭资金协商 | 候选 + 二次确认 | DeepSeek 约束提取、确定性现金流、保证/条件方案、并发快照失效、撤销与有限 Consent Scope |
+| 家庭守护圈 | 双方最小授权 | 一次性邀请、可撤销 Consent、风险摘要白名单、本人加守护人双确认、禁止代替 MFA 和资金执行 |
+| 多渠道网关 | 后端强制 | 前端绑定与撤销、脱敏身份状态、统一消息协议、三层幂等、安全 App 跳转 |
+| 飞书接入 | 渠道受限 | 长连接/Webhook 双模式、验签解密、Worker 在线租约、私聊多轮和安全操作卡片 |
 
 所有资金和订阅操作均运行在 Mock Bank Sandbox 中，不连接真实银行、不处理真实资产。配置 MySQL 后，会话、授权、审计与沙箱状态持久化到数据库；数据库未配置或不可用时明确回退到内存仓库。
 
@@ -95,6 +98,11 @@ npm.cmd run build
 - [密码登录与短期 JWT 配置](docs/AUTH_SETUP.md)
 - [Channel Gateway 设计与实现](docs/CHANNEL_GATEWAY.md)
 - [飞书长连接接入与联调](docs/FEISHU_LONG_CONNECTION.md)
+- [飞书 Webhook 安全部署](docs/FEISHU_WEBHOOK.md)
+- [主动生活事件雷达](docs/LIFE_EVENT_RADAR.md)
+- [家庭资金目标协商器](docs/FAMILY_FUNDING_NEGOTIATION.md)
+- [反诈冷静期](docs/FRAUD_COOLING_PERIOD.md)
+- [家庭守护授权圈](docs/GUARDIAN_CIRCLE.md)
 - [开发顺序清单](docs/DEVELOPMENT_CHECKLIST.md)
 - [获奖增强开发清单](docs/ENHANCEMENT_CHECKLIST.md)
 - [安全自评报告](docs/SECURITY_SELF_ASSESSMENT.md)

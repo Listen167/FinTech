@@ -8,7 +8,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import Engine, and_, or_, select
+from sqlalchemy import Engine, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from backend.app.db.models import (
@@ -104,6 +104,12 @@ class LifeEventRadarRepository:
         details: dict[str, Any] | None = None,
         now: datetime,
     ) -> None:
+        latest = database.scalar(
+            select(func.max(EventActionAuditRecord.created_at)).where(
+                EventActionAuditRecord.action_id == row.action_id
+            )
+        )
+        audit_time = now if latest is None or now > latest else latest + timedelta(microseconds=1)
         database.add(
             EventActionAuditRecord(
                 audit_id=f"saa_{uuid4().hex}",
@@ -114,7 +120,7 @@ class LifeEventRadarRepository:
                 to_status=row.status,
                 actor=actor[:128],
                 details=deepcopy(details or {}),
-                created_at=now,
+                created_at=audit_time,
             )
         )
 

@@ -250,6 +250,162 @@ export function fetchDemoVerificationCode(verificationId: string) {
   }>(`/api/demo/verifications/${verificationId}/code`);
 }
 
+export function submitFraudAppeal(eventId: string, reason: string) {
+  return requestJson<FraudRiskEvent>(
+    `/api/fraud-cooling/events/${encodeURIComponent(eventId)}/appeals`,
+    { method: "POST", body: JSON.stringify({ reason }) },
+  );
+}
+
+export function createFraudReleaseChallenge(eventId: string) {
+  return requestJson<FraudReleaseChallenge>(
+    `/api/fraud-cooling/events/${encodeURIComponent(eventId)}/release-challenges`,
+    { method: "POST" },
+  );
+}
+
+export function fetchDemoFraudReleaseCode(challengeId: string) {
+  return requestJson<{
+    challenge_id: string;
+    code: string;
+    delivery_channel: "MOCK_SMS";
+    expires_at: string;
+  }>(`/api/demo/fraud-release-challenges/${encodeURIComponent(challengeId)}/code`);
+}
+
+export function verifyFraudReleaseChallenge(challengeId: string, code: string) {
+  return requestJson<{
+    event: FraudRiskEvent;
+    challenge: FraudReleaseChallenge;
+    funds_executed: false;
+    message: string;
+  }>(
+    `/api/fraud-cooling/release-challenges/${encodeURIComponent(challengeId)}/verify`,
+    { method: "POST", body: JSON.stringify({ code }) },
+  );
+}
+
+export function fetchGuardianInvitations() {
+  return requestJson<{ items: GuardianInvitation[]; total: number }>(
+    "/api/guardian-circle/invitations",
+  );
+}
+
+export function createGuardianInvitation(payload: CreateGuardianInvitationPayload) {
+  return requestJson<GuardianInvitation>("/api/guardian-circle/invitations", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function acceptGuardianInvitation(token: string) {
+  return requestJson<{
+    invitation: GuardianInvitation;
+    consent: GuardianConsent;
+    funds_execution_allowed: false;
+  }>("/api/guardian-circle/invitations/accept", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+}
+
+export function rejectGuardianInvitation(token: string, reason?: string) {
+  return requestJson<GuardianInvitation>("/api/guardian-circle/invitations/reject", {
+    method: "POST",
+    body: JSON.stringify({ token, reason }),
+  });
+}
+
+export function cancelGuardianInvitation(invitationId: string, reason: string) {
+  return requestJson<GuardianInvitation>(
+    `/api/guardian-circle/invitations/${encodeURIComponent(invitationId)}/cancel`,
+    { method: "POST", body: JSON.stringify({ reason }) },
+  );
+}
+
+export function fetchGuardianConsents() {
+  return requestJson<{ items: GuardianConsent[]; total: number }>(
+    "/api/guardian-circle/consents",
+  );
+}
+
+export function revokeGuardianConsent(consentId: string, reason: string) {
+  return requestJson<GuardianConsent>(
+    `/api/guardian-circle/consents/${encodeURIComponent(consentId)}/revoke`,
+    { method: "POST", body: JSON.stringify({ reason }) },
+  );
+}
+
+export function fetchGuardianRiskReviews() {
+  return requestJson<{ items: GuardianRiskReview[]; total: number }>(
+    "/api/guardian-circle/risk-reviews",
+  );
+}
+
+export function createGuardianRiskReview(payload: CreateGuardianRiskReviewPayload) {
+  return requestJson<GuardianRiskReview>("/api/guardian-circle/risk-reviews", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function decideGuardianRiskAsOwner(
+  reviewId: string,
+  confirmed: boolean,
+  note?: string,
+) {
+  return requestJson<GuardianRiskReview>(
+    `/api/guardian-circle/risk-reviews/${encodeURIComponent(reviewId)}/owner-decision`,
+    { method: "POST", body: JSON.stringify({ confirmed, note }) },
+  );
+}
+
+export function decideGuardianRiskAsGuardian(
+  reviewId: string,
+  riskAcknowledged: boolean,
+  note?: string,
+) {
+  return requestJson<GuardianRiskReview>(
+    `/api/guardian-circle/risk-reviews/${encodeURIComponent(reviewId)}/guardian-decision`,
+    {
+      method: "POST",
+      body: JSON.stringify({ risk_acknowledged: riskAcknowledged, note }),
+    },
+  );
+}
+
+export function createChannelLinkToken(channel: "FEISHU" = "FEISHU") {
+  return requestJson<ChannelLinkToken>("/api/channels/link-tokens", {
+    method: "POST",
+    body: JSON.stringify({ channel }),
+  });
+}
+
+export function fetchChannelIdentities() {
+  return requestJson<{ items: ChannelIdentity[]; total: number }>(
+    "/api/channels/identities",
+  );
+}
+
+export function revokeChannelIdentity(identityId: string) {
+  return requestJson<void>(
+    `/api/channels/identities/${encodeURIComponent(identityId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function fetchChannelManagementStatus() {
+  return requestJson<ChannelManagementStatus>("/api/channels/status");
+}
+
+export function fetchEvaluationSummary() {
+  return requestJson<EvaluationSummary>("/api/evaluation/summary");
+}
+
+export function fetchRuntimeMetrics() {
+  return requestJson<RuntimeMetrics>("/api/evaluation/runtime-metrics");
+}
+
 export function fetchAuditLogs(runId?: string) {
   const query = runId ? `?run_id=${encodeURIComponent(runId)}` : "";
   return requestJson<{ items: AuditLog[]; total: number }>(`/api/audit-logs${query}`);
@@ -309,6 +465,53 @@ export function fetchGoalConflictAnalysis(requestId?: string, protectedBalance =
     : "/api/life-graph/goal-conflicts";
   return requestJson<GoalConflictAnalysis>(
     `${base}?protected_balance=${encodeURIComponent(protectedBalance)}`,
+  );
+}
+
+export function fetchFundingContext() {
+  return requestJson<FundingContext>("/api/family-funding/context");
+}
+
+export function fetchFundingNegotiations(status?: FundingNegotiationStatus) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return requestJson<{ items: FundingNegotiation[]; total: number }>(
+    `/api/family-funding/negotiations${query}`,
+  );
+}
+
+export function createFundingNegotiation(payload: CreateFundingNegotiationPayload) {
+  return requestJson<{ created: boolean; negotiation: FundingNegotiation }>(
+    "/api/family-funding/negotiations",
+    {
+      method: "POST",
+      headers: { "Idempotency-Key": crypto.randomUUID() },
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export function selectFundingPlan(negotiationId: string, planId: string, reason: string) {
+  return requestJson<FundingNegotiation>(
+    `/api/family-funding/negotiations/${encodeURIComponent(negotiationId)}/select`,
+    { method: "POST", body: JSON.stringify({ plan_id: planId, reason }) },
+  );
+}
+
+export function confirmFundingPlan(negotiationId: string, reason: string) {
+  return requestJson<FundingNegotiation>(
+    `/api/family-funding/negotiations/${encodeURIComponent(negotiationId)}/confirm`,
+    { method: "POST", body: JSON.stringify({ reason }) },
+  );
+}
+
+export function transitionFundingNegotiation(
+  negotiationId: string,
+  command: "reject" | "cancel" | "handoff" | "undo",
+  reason: string,
+) {
+  return requestJson<FundingNegotiation>(
+    `/api/family-funding/negotiations/${encodeURIComponent(negotiationId)}/${command}`,
+    { method: "POST", body: JSON.stringify({ reason }) },
   );
 }
 
@@ -443,6 +646,285 @@ export interface VerificationChallenge {
   delivery_hint: string;
   expires_at: string;
   resend_available_at: string;
+}
+
+export interface FraudRiskEvent {
+  event_id: string;
+  trigger_run_id?: string;
+  status: "COOLING_OFF" | "RELEASED" | "EXPIRED";
+  recipient: {
+    display_name: string;
+    account_masked?: string;
+    fingerprint_hint: string;
+  };
+  signals: string[];
+  evidence: Array<{
+    signal: string;
+    fact: string;
+    source: "DETERMINISTIC_RULE";
+  }>;
+  policy_version: string;
+  retry_count: number;
+  appeal: {
+    status: "NONE" | "SUBMITTED";
+    reason?: string;
+    submitted_at?: string;
+  };
+  triggered_at: string;
+  cooling_until: string;
+  released_at?: string;
+  release_method?: string;
+  release: {
+    trusted_app_only: true;
+    strong_verification_required: true;
+    channel_release_allowed: false;
+    funds_auto_resume: false;
+  };
+  help: {
+    title: string;
+    hotline: string;
+    steps: string[];
+  };
+}
+
+export interface FraudReleaseChallenge {
+  challenge_id: string;
+  event_id: string;
+  status: "PENDING" | "VERIFIED" | "EXPIRED" | "LOCKED" | "SUPERSEDED";
+  failed_attempts: number;
+  delivery_channel: "SMS";
+  delivery_hint: string;
+  issued_at: string;
+  expires_at: string;
+  verified_at?: string;
+}
+
+export type GuardianScenario = "LARGE_TRANSFER" | "NEW_RECIPIENT" | "SUSPECTED_FRAUD";
+export type GuardianVisibleField =
+  | "RISK_LEVEL"
+  | "SCENARIO"
+  | "AMOUNT_BAND"
+  | "RECIPIENT_MASKED"
+  | "RISK_SUMMARY"
+  | "OCCURRED_AT";
+
+export interface GuardianScope {
+  scenarios: GuardianScenario[];
+  amount_lower_bound: string;
+  amount_upper_bound: string;
+  visible_fields: GuardianVisibleField[];
+  valid_until: string;
+}
+
+interface GuardianParty {
+  user_id: string;
+  display_name: string;
+}
+
+export interface GuardianInvitation {
+  invitation_id: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELED" | "EXPIRED";
+  owner: GuardianParty;
+  guardian: GuardianParty;
+  scope: GuardianScope;
+  expires_at: string;
+  responded_at?: string;
+  created_at: string;
+  invite_token?: string;
+  token_returned_once?: true;
+}
+
+export interface CreateGuardianInvitationPayload {
+  guardian_user_id: string;
+  scenarios: GuardianScenario[];
+  amount_lower_bound: string;
+  amount_upper_bound: string;
+  visible_fields: GuardianVisibleField[];
+  consent_valid_until: string;
+}
+
+export interface GuardianConsent {
+  consent_id: string;
+  status: "ACTIVE" | "REVOKED" | "EXPIRED";
+  viewer_role: "OWNER" | "GUARDIAN";
+  owner: GuardianParty;
+  guardian: GuardianParty;
+  scope: GuardianScope;
+  activated_at: string;
+  revoked_at?: string;
+  revoked_by_user_id?: string;
+  revoke_reason?: string;
+  capabilities: {
+    risk_summary_only: true;
+    can_acknowledge_risk: boolean;
+    can_execute_funds: false;
+    can_satisfy_mfa: false;
+  };
+}
+
+export interface GuardianRiskReview {
+  review_id: string;
+  consent_id: string;
+  status:
+    | "AWAITING_OWNER"
+    | "AWAITING_GUARDIAN"
+    | "ACKNOWLEDGED"
+    | "REJECTED"
+    | "EXPIRED"
+    | "CANCELED";
+  viewer_role: "OWNER" | "GUARDIAN";
+  owner: GuardianParty;
+  guardian: GuardianParty;
+  visible_payload: {
+    risk_level?: string;
+    scenario?: GuardianScenario;
+    amount_band?: string;
+    recipient_masked?: string;
+    risk_summary?: string;
+    occurred_at?: string;
+  };
+  source_run_id?: string;
+  owner_note?: string;
+  guardian_note?: string;
+  owner_decided_at?: string;
+  guardian_decided_at?: string;
+  expires_at: string;
+  created_at: string;
+  safety_boundary: {
+    risk_acknowledgement_only: true;
+    funds_executed: false;
+    mfa_satisfied: false;
+    execution_authorized: false;
+  };
+}
+
+export interface CreateGuardianRiskReviewPayload {
+  consent_id: string;
+  scenario: GuardianScenario;
+  amount: string;
+  risk_level: "MEDIUM" | "HIGH" | "CRITICAL";
+  recipient_masked?: string;
+  risk_summary: string;
+  source_run_id?: string;
+  expires_in_seconds: number;
+}
+
+export interface ChannelLinkToken {
+  token_id: string;
+  channel: "FEISHU";
+  status: "PENDING";
+  link_code: string;
+  expires_at: string;
+  created_at: string;
+  instructions: string;
+}
+
+export interface ChannelIdentity {
+  identity_id: string;
+  channel: "FEISHU" | "WECHAT_WORK" | "DINGTALK" | "APP";
+  external_user_fingerprint: string;
+  status: "ACTIVE" | "REVOKED";
+  linked_at: string;
+  last_active_at?: string;
+  revoked_at?: string;
+}
+
+export interface ChannelWorkerStatus {
+  worker_fingerprint: string;
+  worker_kind: "FEISHU_INBOUND" | "LIFE_RADAR";
+  transport: "LONG_CONNECTION" | "WEBHOOK" | "SCHEDULER";
+  state: "STARTING" | "ONLINE" | "DEGRADED" | "STOPPING" | "OFFLINE";
+  reported_state: "STARTING" | "ONLINE" | "DEGRADED" | "STOPPING";
+  online: boolean;
+  last_error_code?: string;
+  started_at: string;
+  heartbeat_at: string;
+  expires_at: string;
+}
+
+export interface ChannelManagementStatus {
+  gateway_configured: boolean;
+  feishu_configured: boolean;
+  webhook_configured: boolean;
+  online: boolean;
+  transports: Array<{
+    transport: "LONG_CONNECTION" | "WEBHOOK" | "SCHEDULER";
+    configured: boolean;
+    online: boolean;
+    worker_count: number;
+    last_heartbeat_at?: string;
+  }>;
+  workers: ChannelWorkerStatus[];
+}
+
+export interface EvaluationSummary {
+  schema_version: string;
+  generated_at?: string;
+  evaluation_mode: "OFFLINE_DETERMINISTIC" | "LIVE_DEEPSEEK";
+  dataset: {
+    version: string;
+    sha256: string;
+    case_count: number;
+    categories: Record<string, number>;
+  };
+  versions: {
+    model: {
+      provider: string;
+      requested_model: string;
+      response_models?: string[];
+      invoked?: boolean;
+    };
+    prompt: { version: string; sha256: string };
+    policy: { version: string };
+  };
+  metrics: {
+    intent_accuracy_percent: number;
+    slot_completeness_percent: number;
+    fallback_rate_percent: number;
+    false_execution_rate_percent: number;
+    privilege_escalation_success_rate_percent: number;
+    p95_latency_ms: number;
+  };
+  security_gate: {
+    attack_cases?: number;
+    high_risk_cases?: number;
+    replay_cases?: number;
+    false_execution_successes?: number;
+    privilege_escalation_successes?: number;
+    duplicate_execution_successes?: number;
+    passed?: boolean;
+  };
+  redacted_failures: Array<{
+    case_id: string;
+    category: string;
+    reason: string;
+    expected: string;
+    actual: string;
+  }>;
+  privacy: {
+    scope: "AGGREGATED_AND_REDACTED";
+    contains_raw_messages: false;
+    contains_user_identifiers: false;
+    contains_credentials: false;
+  };
+}
+
+export interface RuntimeMetrics {
+  generated_at: string;
+  privacy_scope: "AGGREGATED_ONLY";
+  telemetry_status: "AVAILABLE" | "MEMORY_ONLY" | "DEGRADED";
+  totals: {
+    runs: number;
+    failed_nodes: number;
+    model_fallbacks: number;
+    model_fallback_rate_percent: number;
+    channel_failures: number;
+    channel_rejections: number;
+    circuit_breakers: number;
+  };
+  run_states: Array<{ state: string; count: number }>;
+  node_failure_codes: Array<{ code: string; count: number }>;
+  definitions: Record<string, string>;
 }
 
 export interface AgentSession {
@@ -752,5 +1234,129 @@ export interface LifeGraphNodeCorrection {
   event_date?: string;
   target_amount?: string;
   reason: string;
+}
+
+export type FundingNegotiationStatus =
+  | "WAITING_INPUT"
+  | "WAITING_SELECTION"
+  | "PENDING_CONFIRMATION"
+  | "APPLIED"
+  | "REJECTED"
+  | "CANCELED"
+  | "STALE"
+  | "WAITING_HUMAN"
+  | "UNDONE";
+
+export interface FundingContext {
+  accounts: Array<{
+    account_id: string;
+    currency: "CNY";
+    available_balance: string;
+  }>;
+  goals: Array<FinancialGoal & { label: string }>;
+  formal_goal_write_requires_confirmation: true;
+  funds_execution_allowed: false;
+}
+
+export interface FundingGoalConstraint {
+  goal_id: string;
+  label: string;
+  target_amount: string;
+  minimum_amount: string;
+  reserved_amount: string;
+  due_date: string;
+  rigidity: "RIGID" | "FLEXIBLE";
+  can_reduce: boolean;
+  can_delay: boolean;
+  can_installments: boolean;
+  priority_rank?: number;
+  relationship_context?: string;
+  evidence: Array<{
+    field_name: string;
+    source: "USER_CONFIRMED" | "BANK_CONFIRMED" | "MODEL_INFERRED" | "FORECAST";
+    confidence_bp: number;
+  }>;
+}
+
+export interface FundingPlanningPayload {
+  goals: FundingGoalConstraint[];
+  constraints: {
+    starting_balance: string;
+    protected_balance: string;
+    allowed_account_ids: string[];
+    planning_start: string;
+    planning_end: string;
+    committed_expenses: Array<Record<string, unknown>>;
+    incomes: Array<Record<string, unknown>>;
+    evidence: FundingGoalConstraint["evidence"];
+  };
+}
+
+export interface CreateFundingNegotiationPayload {
+  request_text: string;
+  planning: FundingPlanningPayload;
+}
+
+export interface FundingPlan {
+  plan_id: string;
+  plan_type: "BASELINE" | "REDUCE_FLEXIBLE" | "DELAY_FLEXIBLE" | "INSTALLMENT" | "WAIT_CONFIRMED_INCOME" | "CUSTOM";
+  feasibility: "GUARANTEED" | "CONDITIONAL" | "INFEASIBLE";
+  title: string;
+  explanation: string;
+  adjustments: Array<{
+    goal_id: string;
+    target_amount?: string;
+    due_date?: string;
+    funding_policy_patch: Record<string, unknown>;
+    reason: string;
+  }>;
+  timeline: Array<{
+    date: string;
+    opening_balance: string;
+    confirmed_income: string;
+    conditional_income: string;
+    committed_expenses: string;
+    goal_allocations: Array<{
+      goal_id: string;
+      label: string;
+      amount: string;
+      rigidity: "RIGID" | "FLEXIBLE";
+    }>;
+    closing_guaranteed_balance: string;
+    closing_conditional_balance: string;
+    protected_balance: string;
+    guaranteed_gap: string;
+  }>;
+  shortfall: string;
+  required_confirmed_income: string;
+  affected_goal_ids: string[];
+  formula: string;
+  warnings: string[];
+  model_explanation?: string;
+}
+
+export interface FundingNegotiation {
+  negotiation_id: string;
+  status: FundingNegotiationStatus;
+  request_text: string;
+  constraints: FundingPlanningPayload | Record<string, never>;
+  plans: FundingPlan[];
+  selected_plan_id?: string;
+  workflow: {
+    engine: "langgraph";
+    version: number;
+    stage: string;
+    checkpoint_seq: number;
+    trace: string[];
+    resumable: boolean;
+    error_code?: string;
+  };
+  model_trace: Record<string, unknown>;
+  missing_fields: string[];
+  applied_changes: Array<Record<string, unknown>>;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+  funds_execution_allowed: false;
 }
 

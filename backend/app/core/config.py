@@ -37,9 +37,14 @@ class Settings(BaseSettings):
     channel_link_token_ttl_seconds: int = Field(default=600, ge=120, le=1800)
     channel_gateway_base_url: str = "http://127.0.0.1:8000"
     channel_gateway_timeout_seconds: int = Field(default=60, ge=5, le=120)
+    channel_worker_heartbeat_seconds: int = Field(default=20, ge=5, le=120)
+    channel_worker_lease_seconds: int = Field(default=75, ge=30, le=300)
     trusted_app_base_url: str = "http://127.0.0.1:5173"
     feishu_app_id: str | None = None
     feishu_app_secret: SecretStr | None = None
+    feishu_verification_token: SecretStr | None = None
+    feishu_encrypt_key: SecretStr | None = None
+    feishu_webhook_max_skew_seconds: int = Field(default=300, ge=60, le=900)
     feishu_worker_threads: int = Field(default=1, ge=1, le=4)
     feishu_log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     life_radar_poll_seconds: int = Field(default=30, ge=5, le=3600)
@@ -48,6 +53,11 @@ class Settings(BaseSettings):
     life_radar_max_attempts: int = Field(default=3, ge=1, le=10)
     life_radar_retry_base_seconds: int = Field(default=60, ge=10, le=3600)
     life_radar_simulation_enabled: bool = False
+    fraud_recipient_pepper: SecretStr | None = None
+    fraud_cooling_minutes: int = Field(default=30, ge=1, le=1440)
+    fraud_release_challenge_ttl_seconds: int = Field(default=300, ge=60, le=600)
+    fraud_release_max_attempts: int = Field(default=3, ge=3, le=5)
+    guardian_invite_ttl_seconds: int = Field(default=600, ge=60, le=86400)
 
     @field_validator("mfa_otp_pepper", mode="before")
     @classmethod
@@ -67,6 +77,28 @@ class Settings(BaseSettings):
         raw_value = value.get_secret_value() if isinstance(value, SecretStr) else str(value)
         if len(raw_value) < 32:
             raise ValueError("Channel Gateway 密钥至少需要 32 个字符")
+        return value
+
+    @field_validator(
+        "feishu_app_secret",
+        "feishu_verification_token",
+        "feishu_encrypt_key",
+        mode="before",
+    )
+    @classmethod
+    def empty_feishu_secret_as_none(cls, value):
+        if value is None or value == "":
+            return None
+        return value
+
+    @field_validator("fraud_recipient_pepper", mode="before")
+    @classmethod
+    def validate_fraud_recipient_pepper(cls, value):
+        if value is None or value == "":
+            return None
+        raw_value = value.get_secret_value() if isinstance(value, SecretStr) else str(value)
+        if len(raw_value) < 32:
+            raise ValueError("FRAUD_RECIPIENT_PEPPER 至少需要 32 个字符")
         return value
 
     @field_validator("trusted_app_base_url")
@@ -98,10 +130,19 @@ class Settings(BaseSettings):
         return bool(self.feishu_app_id and self.feishu_app_secret)
 
     @property
+    def feishu_webhook_configured(self) -> bool:
+        return bool(
+            self.channel_gateway_configured
+            and self.feishu_configured
+            and self.feishu_verification_token
+            and self.feishu_encrypt_key
+        )
+
+    @property
     def life_radar_configured(self) -> bool:
         return bool(
             self.database_configured
-            and self.channel_identity_pepper
+            and self.channel_gateway_configured
             and self.feishu_configured
         )
 

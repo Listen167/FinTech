@@ -10,6 +10,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
 from backend.app.db.models import (
     AgentRunRecord,
     EventActionRecord,
@@ -36,9 +37,16 @@ class LifeGraphServiceError(ApplicationError):
 
 
 class LifeGraphService:
-    def __init__(self, engine: Engine, repository: LifeGraphRepository | None = None) -> None:
+    def __init__(
+        self,
+        engine: Engine,
+        repository: LifeGraphRepository | None = None,
+        *,
+        action_max_attempts: int | None = None,
+    ) -> None:
         self.engine = engine
         self.repository = repository or LifeGraphRepository(engine)
+        self.action_max_attempts = action_max_attempts or settings.life_radar_max_attempts
 
     def create_change_request(
         self,
@@ -424,7 +432,7 @@ class LifeGraphService:
                 scheduled_at=item.scheduled_at,
                 status="PENDING",
                 attempt_count=0,
-                max_attempts=3,
+                max_attempts=self.action_max_attempts,
                 delivery_receipt={},
                 idempotency_key=item.idempotency_key,
                 payload=item.payload,

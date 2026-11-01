@@ -6,19 +6,28 @@ import {
   Circle,
   Download,
   FileSearch,
+  Gauge,
   Headphones,
   LoaderCircle,
   MessageCircle,
   Network,
   PauseCircle,
+  RadioTower,
   LogOut,
   RotateCcw,
+  Scale,
   ShieldCheck,
   SkipForward,
+  UsersRound,
   WalletCards,
   XCircle,
 } from "lucide-vue-next";
 import BillChart from "./components/BillChart.vue";
+import ChannelManagementWorkspace from "./components/ChannelManagementWorkspace.vue";
+import EvaluationDashboard from "./components/EvaluationDashboard.vue";
+import FamilyFundingWorkspace from "./components/FamilyFundingWorkspace.vue";
+import FraudCoolingPanel from "./components/FraudCoolingPanel.vue";
+import GuardianCircleWorkspace from "./components/GuardianCircleWorkspace.vue";
 import LifeGraphWorkspace from "./components/LifeGraphWorkspace.vue";
 import LoginView from "./components/LoginView.vue";
 import OperationPassportPanel from "./components/OperationPassportPanel.vue";
@@ -31,6 +40,8 @@ import {
   downloadOperationPassport,
   correctLifeGraphNode,
   controlLifeRadarAction,
+  confirmFundingPlan,
+  createFundingNegotiation,
   fetchAuditLogs,
   fetchAgentRun,
   fetchAgentSessions,
@@ -41,12 +52,16 @@ import {
   fetchLifeGraph,
   fetchLifeGraphChangeRequests,
   fetchLifeRadarStatus,
+  fetchFundingContext,
+  fetchFundingNegotiations,
   fetchSession,
   login as loginRequest,
   logout as logoutRequest,
   onAuthenticationExpired,
   resetDemo,
   simulateLifeRadar,
+  selectFundingPlan,
+  transitionFundingNegotiation,
   requestHumanHandoff,
   resendVerification,
   restoreAuthentication,
@@ -56,6 +71,9 @@ import {
   type AgentSessionSummary,
   type AuthenticatedUser,
   type GoalConflictAnalysis,
+  type CreateFundingNegotiationPayload,
+  type FundingContext,
+  type FundingNegotiation,
   type LifeGraph,
   type LifeGraphChangeRequest,
   type LifeGraphNodeCorrection,
@@ -102,7 +120,7 @@ const error = ref("");
 const verificationCode = ref("");
 const demoCodeLoading = ref(false);
 const modelStatus = ref<ModelStatus>();
-const workspaceMode = ref<"agent" | "life">("agent");
+const workspaceMode = ref<"agent" | "life" | "funding" | "guardian" | "channel" | "evaluation">("agent");
 const lifeGraph = ref<LifeGraph>();
 const lifeRequests = ref<LifeGraphChangeRequest[]>([]);
 const goalConflict = ref<GoalConflictAnalysis>();
@@ -110,6 +128,10 @@ const protectedBalance = ref("0.00");
 const lifeLoading = ref(false);
 const lifeError = ref("");
 const lifeRadarStatus = ref<LifeRadarStatus>();
+const fundingContext = ref<FundingContext>();
+const fundingNegotiations = ref<FundingNegotiation[]>([]);
+const fundingLoading = ref(false);
+const fundingError = ref("");
 const trustedAction = ref<TrustedActionLink | undefined>(readTrustedAction());
 const trustedActionMessage = ref("");
 const trustedActionLoading = ref(false);
@@ -143,6 +165,9 @@ function clearWorkspace() {
   goalConflict.value = undefined;
   lifeError.value = "";
   lifeRadarStatus.value = undefined;
+  fundingContext.value = undefined;
+  fundingNegotiations.value = [];
+  fundingError.value = "";
 }
 
 async function activateUser(user: AuthenticatedUser) {
@@ -238,6 +263,30 @@ const trustedActionExpectedType = computed(() => ({
   verification: "VERIFICATION",
   life_graph: "LIFE_GRAPH_CHANGE_REQUEST",
 }[trustedAction.value?.kind ?? "confirmation"]));
+const workspaceEyebrow = computed(() => ({
+  agent: "安全金融智能体",
+  life: "生活资金视图",
+  funding: "家庭资金协商",
+  guardian: "家庭守护授权",
+  channel: "多渠道身份管理",
+  evaluation: "评测与安全观测",
+}[workspaceMode.value]));
+const workspaceTitle = computed(() => ({
+  agent: "把生活语言变成可控操作",
+  life: "关系、事件与目标在同一条时间线上",
+  funding: "比较方案，再由你决定资金优先级",
+  guardian: "让家人看见风险，而不是接管账户",
+  channel: "让飞书接入可见、可控、可撤销",
+  evaluation: "用可复现证据回答智能体是否可靠",
+}[workspaceMode.value]));
+const workspaceStatus = computed(() => {
+  if (workspaceMode.value === "agent") return currentRun.value?.state ?? "READY";
+  if (workspaceMode.value === "life") return goalConflict.value?.status ?? "READY";
+  if (workspaceMode.value === "funding") return fundingNegotiations.value[0]?.status ?? "READY";
+  if (workspaceMode.value === "channel") return "GATEWAY";
+  if (workspaceMode.value === "evaluation") return "EVALUATED";
+  return "CONSENT";
+});
 
 function clearTrustedAction(message = "") {
   trustedAction.value = undefined;
@@ -334,6 +383,7 @@ const taskReasonMessages: Record<string, string> = {
 
 const taskErrorMessages: Record<string, string> = {
   POLICY_BLOCKED: "安全策略拒绝继续执行。",
+  FRAUD_COOLING_OFF_ACTIVE: "同一收款人处于反诈冷静期，后续资金节点已停止。",
   SNAPSHOT_MISMATCH: "操作快照校验失败，业务写入未执行。",
   TASK_NODE_INPUT_TAMPERED: "节点输入与已保存摘要不一致，流程已停止。",
   TASK_NODE_RECEIPT_REQUIRED: "工具没有返回可信回执，不能声明成功。",
@@ -453,9 +503,90 @@ async function submit(message = prompt.value) {
   }
 }
 
-async function switchWorkspace(mode: "agent" | "life") {
+async function switchWorkspace(mode: "agent" | "life" | "funding" | "guardian" | "channel" | "evaluation") {
   workspaceMode.value = mode;
   if (mode === "life") await refreshLifeWorkspace(currentLifeRequestId.value);
+  if (mode === "funding") await refreshFundingWorkspace();
+}
+
+async function refreshFundingWorkspace() {
+  if (!currentUser.value || fundingLoading.value) return;
+  fundingLoading.value = true;
+  fundingError.value = "";
+  try {
+    const [context, negotiations] = await Promise.all([
+      fetchFundingContext(),
+      fetchFundingNegotiations(),
+    ]);
+    fundingContext.value = context;
+    fundingNegotiations.value = negotiations.items;
+  } catch (reason) {
+    fundingError.value = readableError(reason, "家庭资金协商加载失败。请检查数据库迁移后重试。");
+  } finally {
+    fundingLoading.value = false;
+  }
+}
+
+async function createFamilyFunding(payload: CreateFundingNegotiationPayload) {
+  if (fundingLoading.value) return;
+  fundingLoading.value = true;
+  fundingError.value = "";
+  try {
+    await createFundingNegotiation(payload);
+  } catch (reason) {
+    fundingError.value = readableError(reason, "资金方案计算失败，没有修改正式目标。");
+  } finally {
+    fundingLoading.value = false;
+  }
+  await refreshFundingWorkspace();
+}
+
+async function chooseFundingPlan(negotiationId: string, planId: string, reason: string) {
+  if (fundingLoading.value) return;
+  fundingLoading.value = true;
+  fundingError.value = "";
+  try {
+    await selectFundingPlan(negotiationId, planId, reason);
+  } catch (failure) {
+    fundingError.value = readableError(failure, "方案选择失败；正式目标未发生变化。");
+  } finally {
+    fundingLoading.value = false;
+  }
+  await refreshFundingWorkspace();
+}
+
+async function approveFundingPlan(negotiationId: string, reason: string) {
+  if (fundingLoading.value) return;
+  fundingLoading.value = true;
+  fundingError.value = "";
+  try {
+    await confirmFundingPlan(negotiationId, reason);
+    await refreshLifeWorkspace();
+  } catch (failure) {
+    fundingError.value = readableError(failure, "确认失败；旧方案不会被继续应用。");
+  } finally {
+    fundingLoading.value = false;
+  }
+  await refreshFundingWorkspace();
+}
+
+async function controlFundingNegotiation(
+  negotiationId: string,
+  command: "reject" | "cancel" | "handoff" | "undo",
+  reason: string,
+) {
+  if (fundingLoading.value) return;
+  fundingLoading.value = true;
+  fundingError.value = "";
+  try {
+    await transitionFundingNegotiation(negotiationId, command, reason);
+    if (command === "undo") await refreshLifeWorkspace();
+  } catch (failure) {
+    fundingError.value = readableError(failure, "协商状态修改失败，原状态未被覆盖。");
+  } finally {
+    fundingLoading.value = false;
+  }
+  await refreshFundingWorkspace();
 }
 
 async function refreshLifeWorkspace(preferredRequestId?: string) {
@@ -818,8 +949,8 @@ onMounted(async () => {
       <section class="conversation-panel">
         <div class="conversation-header">
           <div>
-            <p class="eyebrow">{{ workspaceMode === "agent" ? "安全金融智能体" : "生活资金视图" }}</p>
-            <h1>{{ workspaceMode === "agent" ? "把生活语言变成可控操作" : "关系、事件与目标在同一条时间线上" }}</h1>
+            <p class="eyebrow">{{ workspaceEyebrow }}</p>
+            <h1>{{ workspaceTitle }}</h1>
           </div>
           <div class="conversation-controls">
             <button
@@ -833,9 +964,13 @@ onMounted(async () => {
             <div class="view-switch" aria-label="工作区视图">
               <button type="button" :class="{ active: workspaceMode === 'agent' }" title="对话视图" @click="switchWorkspace('agent')"><MessageCircle :size="16" /><span>对话</span></button>
               <button type="button" :class="{ active: workspaceMode === 'life' }" title="生活图谱视图" @click="switchWorkspace('life')"><Network :size="16" /><span>生活图谱</span></button>
+              <button type="button" :class="{ active: workspaceMode === 'funding' }" title="家庭资金协商" @click="switchWorkspace('funding')"><Scale :size="16" /><span>资金协商</span></button>
+              <button type="button" :class="{ active: workspaceMode === 'guardian' }" title="家庭守护授权圈" @click="switchWorkspace('guardian')"><UsersRound :size="16" /><span>守护圈</span></button>
+              <button type="button" :class="{ active: workspaceMode === 'channel' }" title="飞书渠道与绑定管理" @click="switchWorkspace('channel')"><RadioTower :size="16" /><span>渠道</span></button>
+              <button type="button" :class="{ active: workspaceMode === 'evaluation' }" title="评测、红队与运行指标" @click="switchWorkspace('evaluation')"><Gauge :size="16" /><span>评测</span></button>
             </div>
-            <span class="status" :class="{ blocked: currentRun?.state === 'BLOCKED', human: currentRun?.state === 'WAITING_HUMAN', warning: workspaceMode === 'life' && ['CONFLICT', 'PRESSURE'].includes(goalConflict?.status ?? '') }">
-              {{ workspaceMode === "agent" ? (currentRun?.state ?? "READY") : (goalConflict?.status ?? "READY") }}
+            <span class="status" :class="{ blocked: ['BLOCKED', 'COOLING_OFF'].includes(currentRun?.state ?? ''), human: workspaceStatus === 'WAITING_HUMAN', warning: (workspaceMode === 'life' && ['CONFLICT', 'PRESSURE'].includes(goalConflict?.status ?? '')) || (workspaceMode === 'funding' && workspaceStatus === 'PENDING_CONFIRMATION') }">
+              {{ workspaceStatus }}
             </span>
           </div>
         </div>
@@ -867,6 +1002,11 @@ onMounted(async () => {
               <div class="message user-message"><span>你</span><p>{{ run.user_message }}</p></div>
               <div class="message agent-message"><span>安</span><p>{{ run.message }}</p></div>
             </div>
+
+            <FraudCoolingPanel
+              v-if="currentRun.data.fraud_cooling_event"
+              :event="currentRun.data.fraud_cooling_event"
+            />
 
             <section v-if="currentRun.plan" class="run-section">
               <div class="section-heading">
@@ -970,7 +1110,7 @@ onMounted(async () => {
           </template>
 
           <LifeGraphWorkspace
-            v-else
+            v-else-if="workspaceMode === 'life'"
             :graph="lifeGraph"
             :requests="lifeRequests"
             :conflict="goalConflict"
@@ -983,6 +1123,25 @@ onMounted(async () => {
             @control-action="controlRadarAction"
             @simulate-radar="runRadarSimulation"
           />
+          <FamilyFundingWorkspace
+            v-else-if="workspaceMode === 'funding'"
+            :context="fundingContext"
+            :negotiations="fundingNegotiations"
+            :loading="fundingLoading"
+            :error="fundingError"
+            @refresh="refreshFundingWorkspace"
+            @create="createFamilyFunding"
+            @select="chooseFundingPlan"
+            @confirm="approveFundingPlan"
+            @transition="controlFundingNegotiation"
+          />
+          <GuardianCircleWorkspace
+            v-else-if="workspaceMode === 'guardian' && currentUser"
+            :key="currentUser.id"
+            :current-user-id="currentUser.id"
+          />
+          <ChannelManagementWorkspace v-else-if="workspaceMode === 'channel'" />
+          <EvaluationDashboard v-else-if="workspaceMode === 'evaluation'" />
         </div>
 
         <form v-if="workspaceMode === 'agent' && !trustedAction" class="composer" @submit.prevent="submit()">
@@ -1047,7 +1206,7 @@ onMounted(async () => {
           </section>
         </template>
 
-        <template v-else>
+        <template v-else-if="workspaceMode === 'life'">
           <section>
             <div class="section-heading"><span>目标冲突</span><small>Evidence</small></div>
             <div class="conflict-meter" :class="goalConflict?.status.toLowerCase() ?? 'unknown'">
@@ -1076,6 +1235,75 @@ onMounted(async () => {
             <div class="section-heading"><span>安全边界</span><small>User Choice</small></div>
             <div class="safety-boundary"><ShieldCheck :size="19" /><p>{{ goalConflict?.disclaimer ?? "系统不会自动调整家庭目标。" }}</p></div>
             <ul class="suggestion-list"><li v-for="item in goalConflict?.suggestions ?? []" :key="item.code">{{ item.description }}</li></ul>
+          </section>
+        </template>
+        <template v-else-if="workspaceMode === 'funding'">
+          <section>
+            <div class="section-heading"><span>协商边界</span><small>User Choice</small></div>
+            <div class="safety-boundary"><ShieldCheck :size="19" /><p>人物关系只提供事件上下文，不参与资金优先级排序。正式目标必须二次确认后才会修改。</p></div>
+          </section>
+          <section>
+            <div class="section-heading"><span>资金执行</span><small>Policy</small></div>
+            <div class="risk-meter green"><strong>未授权</strong><span>0 笔</span></div>
+            <p class="risk-reason">协商器不会预留余额、转账或扣款；后续资金操作仍执行黄色确认或红色 MFA。</p>
+          </section>
+          <section v-if="fundingNegotiations[0]">
+            <div class="section-heading"><span>LangGraph</span><small>Negotiation</small></div>
+            <div class="workflow-status">
+              <div><strong>{{ fundingNegotiations[0].workflow.stage }}</strong><span>检查点 {{ fundingNegotiations[0].workflow.checkpoint_seq }}</span></div>
+              <em>{{ fundingNegotiations[0].workflow.resumable ? "可恢复" : "已结束" }}</em>
+            </div>
+            <div class="workflow-trace">
+              <span v-for="node in fundingNegotiations[0].workflow.trace" :key="node">{{ node }}</span>
+            </div>
+          </section>
+        </template>
+        <template v-else-if="workspaceMode === 'guardian'">
+          <section>
+            <div class="section-heading"><span>最小授权</span><small>Consent Scope</small></div>
+            <div class="safety-boundary"><ShieldCheck :size="19" /><p>守护权限来自双方明确确认，不会从生活图谱中的丈夫、妻子、父亲或女儿关系自动推导。</p></div>
+          </section>
+          <section>
+            <div class="section-heading"><span>隐私边界</span><small>Data Minimization</small></div>
+            <div class="risk-meter green"><strong>风险摘要</strong><span>最小字段</span></div>
+            <p class="risk-reason">默认不披露完整账单、余额、交易明细和原始账号；金额只显示区间。</p>
+          </section>
+          <section>
+            <div class="section-heading"><span>资金权限</span><small>Never Delegated</small></div>
+            <div class="risk-meter red"><strong>未授权</strong><span>0 笔</span></div>
+            <p class="risk-reason">“风险已知”不是同意转账。守护人不能代替本人 MFA，也不能恢复或执行任何资金操作。</p>
+          </section>
+        </template>
+        <template v-else-if="workspaceMode === 'channel'">
+          <section>
+            <div class="section-heading"><span>渠道身份</span><small>HMAC Fingerprint</small></div>
+            <div class="safety-boundary"><ShieldCheck :size="19" /><p>外部用户 ID 只以加密密文和不可逆 HMAC 保存，用户页面仅展示脱敏指纹。</p></div>
+          </section>
+          <section>
+            <div class="section-heading"><span>在线证据</span><small>Worker Lease</small></div>
+            <div class="risk-meter green"><strong>短租约</strong><span>自动过期</span></div>
+            <p class="risk-reason">配置完成不等于在线；只有 Worker 持续上报心跳且租约有效时才显示在线。</p>
+          </section>
+          <section>
+            <div class="section-heading"><span>执行边界</span><small>Trusted App</small></div>
+            <div class="risk-meter red"><strong>不授权资金</strong><span>IM 隔离</span></div>
+            <p class="risk-reason">飞书只承载对话和提醒，确认、MFA 与资金执行必须返回受信银行页面。</p>
+          </section>
+        </template>
+        <template v-else>
+          <section>
+            <div class="section-heading"><span>报告边界</span><small>Aggregated</small></div>
+            <div class="safety-boundary"><ShieldCheck :size="19" /><p>评测接口只返回聚合指标和脱敏案例，不返回原始消息、用户标识、账号、Token 或异常堆栈。</p></div>
+          </section>
+          <section>
+            <div class="section-heading"><span>安全门禁</span><small>Zero Success</small></div>
+            <div class="risk-meter green"><strong>越权与重复执行</strong><span>要求 0 成功</span></div>
+            <p class="risk-reason">高风险越权或重复执行出现一次成功，红队门禁即判定失败。</p>
+          </section>
+          <section>
+            <div class="section-heading"><span>评测模式</span><small>Evidence</small></div>
+            <div class="risk-meter yellow"><strong>离线 / 在线</strong><span>严格区分</span></div>
+            <p class="risk-reason">离线基线不调用 DeepSeek；在线成绩必须显式运行并记录模型、Prompt、Policy 和数据集版本。</p>
           </section>
         </template>
       </aside>

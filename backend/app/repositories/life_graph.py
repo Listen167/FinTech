@@ -16,7 +16,9 @@ from sqlalchemy.orm import Session
 
 from backend.app.db.models import (
     EventActionRecord,
+    FamilyFundingNegotiationRecord,
     FinancialGoalRecord,
+    FundingConsentScopeRecord,
     LifeEventRecord,
     LifeGraphChangeRequestRecord,
     LifeGraphEdgeRecord,
@@ -98,6 +100,8 @@ class LifeGraphRepository:
             EventActionRecord,
             LifeGraphEdgeRecord,
             LifeEventRecord,
+            FundingConsentScopeRecord,
+            FamilyFundingNegotiationRecord,
             FinancialGoalRecord,
             LifeGraphNodeRecord,
             LifeGraphChangeRequestRecord,

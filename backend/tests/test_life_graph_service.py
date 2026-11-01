@@ -189,7 +189,7 @@ def test_approval_atomically_materializes_the_complete_graph():
     assert len(graph["nodes"]) == 4
     assert len(graph["edges"]) == 3
     assert graph["goals"][0]["target_amount"] == "1000.00"
-    assert graph["actions"][0]["status"] == "SCHEDULED"
+    assert graph["actions"][0]["status"] == "PENDING"
 
 
 def test_rejection_does_not_modify_the_formal_graph():

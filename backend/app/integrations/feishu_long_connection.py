@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import socket
+from uuid import uuid4
 
 import lark_oapi as lark
 from lark_oapi.api.im.v1 import (
@@ -17,6 +20,9 @@ from backend.app.core.config import settings
 from backend.app.integrations.feishu_adapter import (
     FeishuMessageProcessor,
     HttpChannelGatewayClient,
+)
+from backend.app.integrations.channel_worker_heartbeat import (
+    ChannelWorkerHeartbeatClient,
 )
 
 
@@ -163,6 +169,17 @@ def main() -> None:
         FeishuReplyClient(api_client),
         worker_threads=settings.feishu_worker_threads,
     )
+    heartbeat = ChannelWorkerHeartbeatClient(
+        base_url=settings.channel_gateway_base_url,
+        gateway_secret=settings.channel_gateway_secret.get_secret_value(),
+        worker_id=(
+            f"feishu:{socket.gethostname()}:{os.getpid()}:{uuid4().hex[:10]}"
+        ),
+        worker_kind="FEISHU_INBOUND",
+        transport="LONG_CONNECTION",
+        interval_seconds=settings.channel_worker_heartbeat_seconds,
+        lease_seconds=settings.channel_worker_lease_seconds,
+    )
     event_handler = (
         lark.EventDispatcherHandler.builder("", "", level)
         .register_p2_im_message_receive_v1(processor.handle_event)
@@ -177,9 +194,11 @@ def main() -> None:
     )
 
     logger.info("飞书长连接 Worker 正在启动。")
+    heartbeat.start()
     try:
         ws_client.start()
     finally:
+        heartbeat.close()
         processor.close()
         gateway_client.close()
 

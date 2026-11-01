@@ -69,9 +69,9 @@ LangGraph 只通过服务层读取经过授权的数据并提交候选变更，�
 
 首期的 `funding_policy` 只描述候选策略，例如“确认后预留”。创建目标不等于执行资金划转，真实扣款仍必须进入现有黄/红色权限链路。
 
-### 3.5 待执行动作 `event_actions`
+### 3.5 待执行动作 `scheduled_actions`
 
-保存提醒、预留建议等定时动作，并通过用户级 `idempotency_key` 防止重复执行。动作至少关联一个事件或目标。
+保存提醒、预留建议等定时动作，并通过用户级 `idempotency_key` 防止重复执行。动作至少关联一个事件或目标。主动雷达的租约、重试、审计和飞书投递说明见 [`LIFE_EVENT_RADAR.md`](./LIFE_EVENT_RADAR.md)。
 
 ### 3.6 候选变更 `life_graph_change_requests`
 

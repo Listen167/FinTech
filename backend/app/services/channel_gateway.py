@@ -13,13 +13,48 @@ from urllib.parse import urlencode
 
 from backend.app.errors import ApplicationError, error_definition
 from backend.app.repositories.channel_gateway import ChannelGatewayRepository
-from backend.app.schemas.channel import InboundChannelMessage
+from backend.app.schemas.channel import ChannelWorkerHeartbeat, InboundChannelMessage
 from backend.app.security.channel_identity_cipher import ChannelIdentityCipher
 from backend.app.services.agent_runtime import AgentRuntime
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def summarize_channel_status(
+    workers: list[dict[str, Any]],
+    *,
+    gateway_configured: bool,
+    feishu_configured: bool,
+    webhook_configured: bool,
+) -> dict[str, Any]:
+    transports = []
+    for name, configured in (
+        ("LONG_CONNECTION", gateway_configured and feishu_configured),
+        ("WEBHOOK", webhook_configured),
+        ("SCHEDULER", gateway_configured and feishu_configured),
+    ):
+        matching = [item for item in workers if item["transport"] == name]
+        online_workers = [item for item in matching if item["online"]]
+        transports.append({
+            "transport": name,
+            "configured": configured,
+            "online": bool(online_workers),
+            "worker_count": len(online_workers),
+            "last_heartbeat_at": matching[0]["heartbeat_at"] if matching else None,
+        })
+    return {
+        "gateway_configured": gateway_configured,
+        "feishu_configured": feishu_configured,
+        "webhook_configured": webhook_configured,
+        "online": any(
+            item["online"] and item["worker_kind"] == "FEISHU_INBOUND"
+            for item in workers
+        ),
+        "transports": transports,
+        "workers": workers,
+    }
 
 
 class ChannelGatewayService:
@@ -72,10 +107,51 @@ class ChannelGatewayService:
         }
 
     def list_identities(self, *, user_id: str) -> list[dict[str, Any]]:
-        return self.repository.list_identities(user_id)
+        public_fields = {
+            "identity_id",
+            "channel",
+            "external_user_fingerprint",
+            "status",
+            "linked_at",
+            "last_active_at",
+            "revoked_at",
+        }
+        return [
+            {key: value for key, value in item.items() if key in public_fields}
+            for item in self.repository.list_identities(user_id)
+        ]
 
     def revoke_identity(self, *, user_id: str, identity_id: str) -> dict[str, Any]:
         return self.repository.revoke_identity(user_id=user_id, identity_id=identity_id)
+
+    def record_worker_heartbeat(
+        self,
+        payload: ChannelWorkerHeartbeat,
+        *,
+        default_lease_seconds: int,
+    ) -> dict[str, Any]:
+        return self.repository.record_worker_heartbeat(
+            worker_id=payload.worker_id,
+            worker_kind=payload.worker_kind,
+            transport=payload.transport,
+            state=payload.state,
+            lease_seconds=payload.lease_seconds or default_lease_seconds,
+            last_error_code=payload.last_error_code,
+        )
+
+    def management_status(
+        self,
+        *,
+        gateway_configured: bool,
+        feishu_configured: bool,
+        webhook_configured: bool,
+    ) -> dict[str, Any]:
+        return summarize_channel_status(
+            self.repository.list_worker_statuses(),
+            gateway_configured=gateway_configured,
+            feishu_configured=feishu_configured,
+            webhook_configured=webhook_configured,
+        )
 
     def process_inbound(self, payload: InboundChannelMessage) -> dict[str, Any]:
         external_user_ciphertext = self.identity_cipher.encrypt(payload.external_user_id)
@@ -389,6 +465,21 @@ class ChannelGatewayService:
                 "summary": pending_detail.get("summary") or run["message"],
                 "expires_at": pending_detail.get("expires_at"),
                 "reason": "渠道消息不能代替受信 App 内的确认或强验证。",
+            }
+        elif run.get("state") == "COOLING_OFF":
+            event = run.get("data", {}).get("fraud_cooling_event") or {}
+            event_id = event.get("event_id")
+            query = urlencode({"fraud_event": event_id}) if event_id else ""
+            security = {
+                "mode": "APP_REQUIRED",
+                "action": "OPEN_APP_FRAUD_REVIEW",
+                "run_id": run["run_id"],
+                "deep_link": f"{self.trusted_app_base_url}/?{query}",
+                "action_label": "前往银行 App 核实",
+                "risk_level": "BLOCKED",
+                "summary": run["message"],
+                "expires_at": event.get("cooling_until"),
+                "reason": "飞书只能接收风险提醒，不能申诉或解除反诈冷静期。",
             }
         return {
             "schema_version": "1.0",

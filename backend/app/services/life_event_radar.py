@@ -100,7 +100,17 @@ class LifeEventRadarService:
             lease_seconds=self.lease_seconds,
             owner_user_id=owner_user_id,
         )
-        results = [self._process_action(action, worker_id, effective_now) for action in actions]
+        results: list[dict[str, Any]] = []
+        for action in actions:
+            try:
+                results.append(self._process_action(action, worker_id, effective_now))
+            except ApplicationError as error:
+                # 租约已被其他实例接管时，本实例不得继续写入，但不能阻断同批其他动作。
+                results.append({
+                    "action_id": action["action_id"],
+                    "status": "LEASE_LOST",
+                    "last_error_code": error.code,
+                })
         return {
             "clock": {"mode": clock_mode, "effective_now": effective_now.isoformat()},
             "claimed": len(actions),
