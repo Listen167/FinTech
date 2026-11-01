@@ -36,7 +36,7 @@ tags:
 security:
   - bearerAuth: []
 paths:
-  /api/v1/auth/login:
+  /api/auth/login:
     post:
       tags: [Auth]
       summary: Mock 登录
@@ -57,7 +57,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
-  /api/v1/users/me:
+  /api/users/me:
     get:
       tags: [Auth]
       summary: 获取当前用户
@@ -68,7 +68,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserProfile'
-  /api/v1/agent/chat:
+  /api/agent/chat:
     post:
       tags: [Agent]
       summary: 发送用户消息给 AI Agent
@@ -97,7 +97,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ChatResponse'
-  /api/v1/agent/plan:
+  /api/agent/plan:
     post:
       tags: [Agent]
       summary: 仅生成任务计划
@@ -115,7 +115,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlanResponse'
-  /api/v1/agent/confirm:
+  /api/agent/confirm:
     post:
       tags: [Agent]
       summary: 用户确认黄色权限操作
@@ -132,7 +132,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OperationResult'
-  /api/v1/agent/abort:
+  /api/agent/abort:
     post:
       tags: [Agent]
       summary: 中止当前计划
@@ -157,7 +157,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OperationResult'
-  /api/v1/accounts:
+  /api/accounts:
     get:
       tags: [Accounts]
       summary: 查询账户列表
@@ -174,7 +174,7 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Account'
-  /api/v1/accounts/{account_id}/balance:
+  /api/accounts/{account_id}/balance:
     get:
       tags: [Accounts]
       summary: 查询账户余额
@@ -187,7 +187,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Balance'
-  /api/v1/transactions:
+  /api/transactions:
     get:
       tags: [Transactions]
       summary: 查询交易流水
@@ -228,7 +228,7 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Transaction'
-  /api/v1/bills/summary:
+  /api/bills/summary:
     get:
       tags: [Transactions]
       summary: 查询账单汇总
@@ -247,7 +247,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BillSummary'
-  /api/v1/bills/analyze:
+  /api/bills/analyze:
     post:
       tags: [Transactions]
       summary: 生成账单分析报告
@@ -264,7 +264,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BillAnalysis'
-  /api/v1/contacts:
+  /api/contacts:
     get:
       tags: [Contacts]
       summary: 搜索联系人
@@ -288,7 +288,7 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Contact'
-  /api/v1/transfers/preview:
+  /api/transfers/preview:
     post:
       tags: [Transfers]
       summary: 转账预览
@@ -306,7 +306,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransferPreview'
-  /api/v1/transfers/execute:
+  /api/transfers/execute:
     post:
       tags: [Transfers]
       summary: 执行转账
@@ -324,7 +324,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransferResult'
-  /api/v1/subscriptions:
+  /api/subscriptions:
     get:
       tags: [Subscriptions]
       summary: 查询订阅和代扣列表
@@ -341,7 +341,7 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Subscription'
-  /api/v1/subscriptions/{subscription_id}/cancel/preview:
+  /api/subscriptions/{subscription_id}/cancel/preview:
     post:
       tags: [Subscriptions]
       summary: 取消订阅预览
@@ -354,7 +354,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SubscriptionCancelPreview'
-  /api/v1/subscriptions/{subscription_id}/cancel/execute:
+  /api/subscriptions/{subscription_id}/cancel/execute:
     post:
       tags: [Subscriptions]
       summary: 执行取消订阅
@@ -377,7 +377,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OperationResult'
-  /api/v1/cards:
+  /api/cards:
     get:
       tags: [Cards]
       summary: 查询银行卡列表
@@ -394,7 +394,7 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Card'
-  /api/v1/cards/{card_id}/limits/preview:
+  /api/cards/{card_id}/limits/preview:
     post:
       tags: [Cards]
       summary: 调整银行卡限额预览
@@ -418,7 +418,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PolicyDecision'
-  /api/v1/security/otp/send:
+  /api/security/otp/send:
     post:
       tags: [Security]
       summary: 发送短信验证码
@@ -447,7 +447,7 @@ paths:
                   expires_in:
                     type: integer
                     example: 300
-  /api/v1/security/otp/verify:
+  /api/security/otp/verify:
     post:
       tags: [Security]
       summary: 校验短信验证码
@@ -478,7 +478,7 @@ paths:
                   verification_token:
                     type: string
                     nullable: true
-  /api/v1/security/evaluate:
+  /api/security/evaluate:
     post:
       tags: [Security]
       summary: 安全文本检测
@@ -502,7 +502,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SafetyEvaluation'
-  /api/v1/audit-logs:
+  /api/audit-logs:
     get:
       tags: [Audit]
       summary: 查询审计日志

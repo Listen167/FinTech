@@ -21,11 +21,12 @@ tags:
   - name: Subscriptions
   - name: Security
   - name: Audit
+  - name: Channel Gateway
   - name: Internal Tools
 security:
   - bearerAuth: []
 paths:
-  /api/v1/auth/login:
+  /api/auth/login:
     post:
       tags: [Auth]
       operationId: login
@@ -52,7 +53,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/users/me:
+  /api/users/me:
     get:
       tags: [Auth]
       operationId: getCurrentUser
@@ -72,7 +73,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/agent/runs:
+  /api/agent/runs:
     post:
       tags: [Agent Runs]
       operationId: createAgentRun
@@ -100,7 +101,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/agent/runs/{run_id}:
+  /api/agent/runs/{run_id}:
     get:
       tags: [Agent Runs]
       operationId: getAgentRun
@@ -121,7 +122,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/agent/runs/{run_id}/abort:
+  /api/agent/runs/{run_id}/abort:
     post:
       tags: [Agent Runs]
       operationId: abortAgentRun
@@ -146,7 +147,31 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/agent/confirmations/{confirmation_id}/decide:
+  /api/agent/runs/{run_id}/handoff:
+    post:
+      tags: [Agent Runs]
+      operationId: handoffAgentRun
+      summary: Freeze automatic execution and request human handling
+      parameters:
+        - $ref: '#/components/parameters/XRequestId'
+        - $ref: '#/components/parameters/RunId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HumanHandoffRequest'
+      responses:
+        "200":
+          description: Run is waiting for human handling
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRun'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/agent/confirmations/{confirmation_id}/decide:
     post:
       tags: [Confirmations]
       operationId: decideConfirmation
@@ -171,7 +196,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/accounts:
+  /api/accounts:
     get:
       tags: [Accounts]
       operationId: listAccounts
@@ -188,7 +213,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/accounts/{account_id}/balance:
+  /api/accounts/{account_id}/balance:
     get:
       tags: [Accounts]
       operationId: getAccountBalance
@@ -206,7 +231,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/transactions:
+  /api/transactions:
     get:
       tags: [Transactions]
       operationId: listTransactions
@@ -252,7 +277,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/bills/analyze:
+  /api/bills/analyze:
     post:
       tags: [Transactions]
       operationId: analyzeBill
@@ -276,7 +301,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/transfers/preview:
+  /api/transfers/preview:
     post:
       tags: [Transfers]
       operationId: previewTransfer
@@ -300,7 +325,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/transfers/{preview_id}/execute:
+  /api/transfers/{preview_id}/execute:
     post:
       tags: [Transfers]
       operationId: executeTransfer
@@ -325,7 +350,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/subscriptions:
+  /api/subscriptions:
     get:
       tags: [Subscriptions]
       operationId: listSubscriptions
@@ -342,7 +367,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/subscriptions/{subscription_id}/cancel-preview:
+  /api/subscriptions/{subscription_id}/cancel-preview:
     post:
       tags: [Subscriptions]
       operationId: previewSubscriptionCancel
@@ -361,7 +386,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/security/verifications:
+  /api/security/verifications:
     post:
       tags: [Security]
       operationId: createVerification
@@ -385,7 +410,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/security/verifications/{verification_id}/verify:
+  /api/security/verifications/{verification_id}/verify:
     post:
       tags: [Security]
       operationId: verifyCode
@@ -410,7 +435,7 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
-  /api/v1/audit-logs:
+  /api/audit-logs:
     get:
       tags: [Audit]
       operationId: listAuditLogs
@@ -496,12 +521,100 @@ paths:
         default:
           $ref: '#/components/responses/Error'
 
+  /api/channels/link-tokens:
+    post:
+      tags: [Channel Gateway]
+      operationId: createChannelLinkToken
+      summary: Create a single-use channel identity link token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChannelLinkTokenRequest'
+      responses:
+        "201":
+          description: Link token created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelLinkToken'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/channels/identities:
+    get:
+      tags: [Channel Gateway]
+      operationId: listChannelIdentities
+      summary: List current user's channel identities
+      responses:
+        "200":
+          description: Channel identity list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChannelIdentity'
+                  total:
+                    type: integer
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/channels/identities/{identity_id}:
+    delete:
+      tags: [Channel Gateway]
+      operationId: revokeChannelIdentity
+      summary: Revoke a channel identity owned by the current user
+      parameters:
+        - name: identity_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Channel identity revoked
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/channels/messages/inbound:
+    post:
+      tags: [Channel Gateway]
+      operationId: processInboundChannelMessage
+      summary: Process a normalized message from a trusted channel adapter
+      security:
+        - gatewayKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InboundChannelMessage'
+      responses:
+        "200":
+          description: Normalized channel response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelMessageResponse'
+        default:
+          $ref: '#/components/responses/Error'
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    gatewayKey:
+      type: apiKey
+      in: header
+      name: X-Channel-Gateway-Key
   headers:
     XRequestId:
       description: Request correlation id.
@@ -682,8 +795,10 @@ components:
           enum:
             - RECEIVED
             - PLANNING
+            - WAITING_INPUT
             - WAITING_CONFIRMATION
             - WAITING_VERIFICATION
+            - WAITING_HUMAN
             - RUNNING
             - SUCCEEDED
             - FAILED
@@ -702,8 +817,47 @@ components:
         data:
           type: object
           additionalProperties: true
+        workflow:
+          $ref: '#/components/schemas/WorkflowCheckpoint'
         audit_id:
           type: string
+    WorkflowCheckpoint:
+      type: object
+      required: [engine, version, stage, checkpoint_seq, trace, resumable, recovered]
+      properties:
+        engine:
+          type: string
+          enum: [langgraph]
+        version:
+          type: integer
+          minimum: 1
+        stage:
+          type: string
+        checkpoint_seq:
+          type: integer
+          minimum: 1
+        trace:
+          type: array
+          items:
+            type: string
+        resumable:
+          type: boolean
+        recovered:
+          type: boolean
+        missing_slots:
+          type: array
+          items:
+            type: string
+        change_request_id:
+          type: string
+        conflict_status:
+          type: string
+          enum: [CLEAR, PRESSURE, CONFLICT, UNKNOWN]
+        error_code:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
     Intent:
       type: object
       required: [name, confidence]
@@ -743,7 +897,7 @@ components:
           type: string
         type:
           type: string
-          enum: [TOOL, POLICY, HUMAN_CONFIRM, STRONG_VERIFY, RESPONSE]
+          enum: [VALIDATION, TOOL, POLICY, HUMAN_CONFIRM, STRONG_VERIFY, RESPONSE]
         tool:
           type: string
           nullable: true
@@ -817,6 +971,14 @@ components:
       properties:
         reason:
           type: string
+    HumanHandoffRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 2
+          maxLength: 200
     OperationResult:
       type: object
       required: [success, message]
@@ -1110,4 +1272,116 @@ components:
           additionalProperties: true
         audit_id:
           type: string
+    CreateChannelLinkTokenRequest:
+      type: object
+      required: [channel]
+      additionalProperties: false
+      properties:
+        channel:
+          type: string
+          enum: [APP, FEISHU, WECHAT_WORK, DINGTALK]
+    ChannelLinkToken:
+      type: object
+      required: [token_id, channel, status, expires_at, link_code, instructions]
+      properties:
+        token_id:
+          type: string
+        channel:
+          type: string
+        status:
+          type: string
+          enum: [PENDING]
+        expires_at:
+          type: string
+          format: date-time
+        link_code:
+          type: string
+        instructions:
+          type: string
+    ChannelIdentity:
+      type: object
+      required: [identity_id, channel, tenant_id, external_user_fingerprint, status]
+      properties:
+        identity_id:
+          type: string
+        channel:
+          type: string
+        tenant_id:
+          type: string
+        external_user_fingerprint:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, REVOKED]
+        linked_at:
+          type: string
+          format: date-time
+    InboundChannelMessage:
+      type: object
+      additionalProperties: false
+      required:
+        - schema_version
+        - channel
+        - tenant_id
+        - external_message_id
+        - external_conversation_id
+        - external_user_id
+        - kind
+        - occurred_at
+      properties:
+        schema_version:
+          type: string
+          enum: ['1.0']
+        channel:
+          type: string
+          enum: [APP, FEISHU, WECHAT_WORK, DINGTALK]
+        tenant_id:
+          type: string
+        external_message_id:
+          type: string
+        external_conversation_id:
+          type: string
+        external_user_id:
+          type: string
+        kind:
+          type: string
+          enum: [TEXT, LINK]
+        text:
+          type: string
+          maxLength: 2000
+        link_code:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+    ChannelMessageResponse:
+      type: object
+      required: [schema_version, gateway_message_id, status, replayed, reply, security]
+      properties:
+        schema_version:
+          type: string
+        gateway_message_id:
+          type: string
+        status:
+          type: string
+          enum: [PROCESSED, REJECTED]
+        replayed:
+          type: boolean
+        reply:
+          type: object
+          additionalProperties: true
+        binding:
+          type: object
+          nullable: true
+          additionalProperties: true
+        agent:
+          type: object
+          nullable: true
+          additionalProperties: true
+        security:
+          type: object
+          additionalProperties: true
+        error:
+          type: object
+          additionalProperties: true
 

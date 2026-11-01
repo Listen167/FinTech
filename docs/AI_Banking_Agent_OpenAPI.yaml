@@ -1,0 +1,1075 @@
+# 文档状态：历史手工草案。当前接口请使用 /openapi.json，或运行 python -m scripts.export_openapi。
+openapi: 3.0.3
+info:
+  title: SafeBank Agent API
+  version: 0.1.0
+  license:
+    name: Internal Competition Document
+  description: |
+    SafeBank Agent 银行 AI 智能体接口定义。
+    本文件可直接导入 Apifox，用于前端、后端、AI 服务联调。
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.safebank-agent.example.com
+    description: Demo server placeholder
+tags:
+  - name: Auth
+    description: 登录与当前用户
+  - name: Agent
+    description: AI 对话、任务规划、确认执行
+  - name: Accounts
+    description: 账户与余额
+  - name: Transactions
+    description: 交易流水与账单分析
+  - name: Transfers
+    description: 转账预览与执行
+  - name: Contacts
+    description: 联系人查询
+  - name: Subscriptions
+    description: 订阅和代扣管理
+  - name: Cards
+    description: 银行卡管理预留接口
+  - name: Security
+    description: 验证码、强验证与安全评估
+  - name: Audit
+    description: 审计日志
+security:
+  - bearerAuth: []
+paths:
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Mock 登录
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              phone: "13800000000"
+              password: "demo123456"
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+  /api/users/me:
+    get:
+      tags: [Auth]
+      summary: 获取当前用户
+      responses:
+        "200":
+          description: 当前用户
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+  /api/agent/chat:
+    post:
+      tags: [Agent]
+      summary: 发送用户消息给 AI Agent
+      description: 前端聊天主入口。Agent 会返回普通回复、追问、确认请求、强验证请求或执行结果。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              bill:
+                summary: 账单分析
+                value:
+                  session_id: "sess_001"
+                  message: "我这个月钱都花哪了？"
+              transfer:
+                summary: 小额转账
+                value:
+                  session_id: "sess_001"
+                  message: "转 200 给小王，备注饭钱"
+      responses:
+        "200":
+          description: Agent 回复
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+  /api/agent/plan:
+    post:
+      tags: [Agent]
+      summary: 仅生成任务计划
+      description: AI 组调试接口，用于查看自然语言被解析后的意图和 DAG，不执行真实业务。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanRequest'
+      responses:
+        "200":
+          description: 任务计划
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+  /api/agent/confirm:
+    post:
+      tags: [Agent]
+      summary: 用户确认黄色权限操作
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmRequest'
+      responses:
+        "200":
+          description: 确认后的执行结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
+  /api/agent/abort:
+    post:
+      tags: [Agent]
+      summary: 中止当前计划
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id, plan_id]
+              properties:
+                session_id:
+                  type: string
+                plan_id:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: 已中止
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
+  /api/accounts:
+    get:
+      tags: [Accounts]
+      summary: 查询账户列表
+      responses:
+        "200":
+          description: 账户列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Account'
+  /api/accounts/{account_id}/balance:
+    get:
+      tags: [Accounts]
+      summary: 查询账户余额
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        "200":
+          description: 账户余额
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Balance'
+  /api/transactions:
+    get:
+      tags: [Transactions]
+      summary: 查询交易流水
+      parameters:
+        - name: account_id
+          in: query
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: 交易流水
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+  /api/bills/summary:
+    get:
+      tags: [Transactions]
+      summary: 查询账单汇总
+      parameters:
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+          example: "2026-09"
+      responses:
+        "200":
+          description: 月度账单汇总
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillSummary'
+  /api/bills/analyze:
+    post:
+      tags: [Transactions]
+      summary: 生成账单分析报告
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillAnalyzeRequest'
+      responses:
+        "200":
+          description: 账单分析结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillAnalysis'
+  /api/contacts:
+    get:
+      tags: [Contacts]
+      summary: 搜索联系人
+      parameters:
+        - name: keyword
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "小王"
+      responses:
+        "200":
+          description: 联系人列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Contact'
+  /api/transfers/preview:
+    post:
+      tags: [Transfers]
+      summary: 转账预览
+      description: 只生成预览和权限等级，不执行转账。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferPreviewRequest'
+      responses:
+        "200":
+          description: 转账预览
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferPreview'
+  /api/transfers/execute:
+    post:
+      tags: [Transfers]
+      summary: 执行转账
+      description: 黄色操作必须带 confirmation_id，红色操作必须带 verification_token。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferExecuteRequest'
+      responses:
+        "200":
+          description: 转账结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResult'
+  /api/subscriptions:
+    get:
+      tags: [Subscriptions]
+      summary: 查询订阅和代扣列表
+      responses:
+        "200":
+          description: 订阅列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Subscription'
+  /api/subscriptions/{subscription_id}/cancel/preview:
+    post:
+      tags: [Subscriptions]
+      summary: 取消订阅预览
+      parameters:
+        - $ref: '#/components/parameters/SubscriptionId'
+      responses:
+        "200":
+          description: 取消订阅预览
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionCancelPreview'
+  /api/subscriptions/{subscription_id}/cancel/execute:
+    post:
+      tags: [Subscriptions]
+      summary: 执行取消订阅
+      parameters:
+        - $ref: '#/components/parameters/SubscriptionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmation_id]
+              properties:
+                confirmation_id:
+                  type: string
+      responses:
+        "200":
+          description: 取消结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
+  /api/cards:
+    get:
+      tags: [Cards]
+      summary: 查询银行卡列表
+      responses:
+        "200":
+          description: 银行卡列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Card'
+  /api/cards/{card_id}/limits/preview:
+    post:
+      tags: [Cards]
+      summary: 调整银行卡限额预览
+      parameters:
+        - $ref: '#/components/parameters/CardId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [daily_limit]
+              properties:
+                daily_limit:
+                  type: number
+                  example: 5000
+      responses:
+        "200":
+          description: 限额调整预览
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyDecision'
+  /api/security/otp/send:
+    post:
+      tags: [Security]
+      summary: 发送短信验证码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scene]
+              properties:
+                scene:
+                  type: string
+                  enum: [TRANSFER_HIGH_RISK, CARD_LOSS, WEALTH_PURCHASE, LOGIN]
+      responses:
+        "200":
+          description: 发送结果
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [verification_id, expires_in]
+                properties:
+                  verification_id:
+                    type: string
+                  expires_in:
+                    type: integer
+                    example: 300
+  /api/security/otp/verify:
+    post:
+      tags: [Security]
+      summary: 校验短信验证码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [verification_id, code]
+              properties:
+                verification_id:
+                  type: string
+                code:
+                  type: string
+                  example: "123456"
+      responses:
+        "200":
+          description: 校验结果
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [verified, verification_token]
+                properties:
+                  verified:
+                    type: boolean
+                  verification_token:
+                    type: string
+                    nullable: true
+  /api/security/evaluate:
+    post:
+      tags: [Security]
+      summary: 安全文本检测
+      description: AI 服务调用，用于检测 Prompt 注入、越权请求和敏感信息套取。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                session_id:
+                  type: string
+      responses:
+        "200":
+          description: 安全评估结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyEvaluation'
+  /api/audit-logs:
+    get:
+      tags: [Audit]
+      summary: 查询审计日志
+      parameters:
+        - name: session_id
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: 审计日志列表
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditLog'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    AccountId:
+      name: account_id
+      in: path
+      required: true
+      schema:
+        type: string
+    SubscriptionId:
+      name: subscription_id
+      in: path
+      required: true
+      schema:
+        type: string
+    CardId:
+      name: card_id
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    LoginRequest:
+      type: object
+      required: [phone, password]
+      properties:
+        phone:
+          type: string
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required: [access_token, token_type, user]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        user:
+          $ref: '#/components/schemas/UserProfile'
+    UserProfile:
+      type: object
+      required: [id, name, phone_masked, status]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: "张三"
+        phone_masked:
+          type: string
+          example: "138****0000"
+        status:
+          type: string
+          enum: [NORMAL, LOCKED]
+        risk_level:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+    ChatRequest:
+      type: object
+      required: [session_id, message]
+      properties:
+        session_id:
+          type: string
+        message:
+          type: string
+        client_context:
+          type: object
+          additionalProperties: true
+    ChatResponse:
+      type: object
+      required: [session_id, type, message]
+      properties:
+        session_id:
+          type: string
+        type:
+          type: string
+          enum:
+            - TEXT
+            - CLARIFICATION
+            - CONFIRMATION_REQUIRED
+            - STRONG_VERIFICATION_REQUIRED
+            - RESULT
+            - BLOCKED
+        message:
+          type: string
+        intent:
+          $ref: '#/components/schemas/Intent'
+        plan:
+          $ref: '#/components/schemas/TaskPlan'
+        policy:
+          $ref: '#/components/schemas/PolicyDecision'
+        confirmation:
+          $ref: '#/components/schemas/Confirmation'
+        data:
+          type: object
+          additionalProperties: true
+        audit_id:
+          type: string
+    PlanRequest:
+      type: object
+      required: [session_id, message]
+      properties:
+        session_id:
+          type: string
+        message:
+          type: string
+    PlanResponse:
+      type: object
+      required: [intent, plan, policy]
+      properties:
+        intent:
+          $ref: '#/components/schemas/Intent'
+        plan:
+          $ref: '#/components/schemas/TaskPlan'
+        policy:
+          $ref: '#/components/schemas/PolicyDecision'
+    Intent:
+      type: object
+      required: [name, confidence]
+      properties:
+        name:
+          type: string
+          example: transfer.create
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        slots:
+          type: object
+          additionalProperties: true
+        missing_slots:
+          type: array
+          items:
+            type: string
+        risk_hints:
+          type: array
+          items:
+            type: string
+    TaskPlan:
+      type: object
+      required: [plan_id, nodes]
+      properties:
+        plan_id:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanNode'
+    PlanNode:
+      type: object
+      required: [id, type]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [TOOL, POLICY, HUMAN_CONFIRM, STRONG_VERIFY, RESPONSE]
+        tool:
+          type: string
+          nullable: true
+        input:
+          type: object
+          additionalProperties: true
+        depends_on:
+          type: array
+          items:
+            type: string
+    PolicyDecision:
+      type: object
+      required: [level, action, reason]
+      properties:
+        level:
+          type: string
+          enum: [GREEN, YELLOW, RED, BLOCKED]
+        action:
+          type: string
+          enum: [AUTO_EXECUTE, REQUIRE_CONFIRMATION, REQUIRE_STRONG_VERIFICATION, BLOCK]
+        reason:
+          type: string
+        risk_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        required_fields:
+          type: array
+          items:
+            type: string
+    Confirmation:
+      type: object
+      required: [confirmation_id, expires_in, summary]
+      properties:
+        confirmation_id:
+          type: string
+        expires_in:
+          type: integer
+          example: 300
+        summary:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    ConfirmRequest:
+      type: object
+      required: [session_id, confirmation_id, confirmed]
+      properties:
+        session_id:
+          type: string
+        confirmation_id:
+          type: string
+        confirmed:
+          type: boolean
+    OperationResult:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        audit_id:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+    Account:
+      type: object
+      required: [id, name, account_no_masked, type, currency]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: "招商银行储蓄卡"
+        account_no_masked:
+          type: string
+          example: "6225 **** **** 1024"
+        type:
+          type: string
+          enum: [DEBIT, CREDIT]
+        currency:
+          type: string
+          example: CNY
+    Balance:
+      type: object
+      required: [account_id, available_balance, currency, updated_at]
+      properties:
+        account_id:
+          type: string
+        available_balance:
+          type: number
+          example: 12888.52
+        frozen_balance:
+          type: number
+          example: 0
+        currency:
+          type: string
+          example: CNY
+        updated_at:
+          type: string
+          format: date-time
+    Transaction:
+      type: object
+      required: [id, account_id, occurred_at, amount, currency, merchant, category]
+      properties:
+        id:
+          type: string
+        account_id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        amount:
+          type: number
+          description: 支出为负，收入为正
+        currency:
+          type: string
+          example: CNY
+        merchant:
+          type: string
+          example: "星巴克"
+        category:
+          type: string
+          example: "餐饮"
+        channel:
+          type: string
+          example: "银行卡快捷支付"
+        is_abnormal:
+          type: boolean
+    BillSummary:
+      type: object
+      required: [month, income_total, expense_total, categories]
+      properties:
+        month:
+          type: string
+          example: "2026-09"
+        income_total:
+          type: number
+        expense_total:
+          type: number
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillCategory'
+    BillCategory:
+      type: object
+      required: [name, amount, ratio]
+      properties:
+        name:
+          type: string
+        amount:
+          type: number
+        ratio:
+          type: number
+          example: 0.23
+    BillAnalyzeRequest:
+      type: object
+      required: [month]
+      properties:
+        month:
+          type: string
+          example: "2026-09"
+        include_abnormal_detection:
+          type: boolean
+          default: true
+    BillAnalysis:
+      type: object
+      required: [summary, categories, insights, abnormal_transactions]
+      properties:
+        summary:
+          $ref: '#/components/schemas/BillSummary'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillCategory'
+        insights:
+          type: array
+          items:
+            type: string
+        abnormal_transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+    Contact:
+      type: object
+      required: [id, name, phone_masked]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: "王明"
+        alias:
+          type: string
+          example: "小王"
+        phone_masked:
+          type: string
+          example: "139****8888"
+        bank_name:
+          type: string
+          example: "微众银行"
+    TransferPreviewRequest:
+      type: object
+      required: [from_account_id, recipient_contact_id, amount]
+      properties:
+        from_account_id:
+          type: string
+        recipient_contact_id:
+          type: string
+        amount:
+          type: number
+          minimum: 0.01
+        currency:
+          type: string
+          default: CNY
+        memo:
+          type: string
+        schedule_time:
+          type: string
+          format: date-time
+          nullable: true
+    TransferPreview:
+      type: object
+      required: [preview_id, amount, fee, recipient, policy]
+      properties:
+        preview_id:
+          type: string
+        amount:
+          type: number
+        fee:
+          type: number
+        currency:
+          type: string
+        recipient:
+          $ref: '#/components/schemas/Contact'
+        from_account:
+          $ref: '#/components/schemas/Account'
+        policy:
+          $ref: '#/components/schemas/PolicyDecision'
+        confirmation:
+          $ref: '#/components/schemas/Confirmation'
+    TransferExecuteRequest:
+      type: object
+      required: [preview_id]
+      properties:
+        preview_id:
+          type: string
+        confirmation_id:
+          type: string
+          nullable: true
+        verification_token:
+          type: string
+          nullable: true
+    TransferResult:
+      type: object
+      required: [success, status]
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+          enum: [SUCCESS, PENDING, FAILED, BLOCKED]
+        transaction_id:
+          type: string
+          nullable: true
+        message:
+          type: string
+        audit_id:
+          type: string
+    Subscription:
+      type: object
+      required: [id, name, amount, currency, cycle, next_charge_date, status]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          example: "腾讯视频会员"
+        amount:
+          type: number
+          example: 25
+        currency:
+          type: string
+          example: CNY
+        cycle:
+          type: string
+          enum: [MONTHLY, QUARTERLY, YEARLY, UNKNOWN]
+        next_charge_date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ACTIVE, CANCELED, SUSPICIOUS]
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+    SubscriptionCancelPreview:
+      type: object
+      required: [subscription, policy, confirmation]
+      properties:
+        subscription:
+          $ref: '#/components/schemas/Subscription'
+        impact:
+          type: string
+          example: "取消后下月起不再自动扣费，会员权益可能立即失效。"
+        policy:
+          $ref: '#/components/schemas/PolicyDecision'
+        confirmation:
+          $ref: '#/components/schemas/Confirmation'
+    Card:
+      type: object
+      required: [id, name, card_no_masked, status]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        card_no_masked:
+          type: string
+        status:
+          type: string
+          enum: [NORMAL, FROZEN, LOST]
+        daily_limit:
+          type: number
+    SafetyEvaluation:
+      type: object
+      required: [safe, risk_type, score]
+      properties:
+        safe:
+          type: boolean
+        risk_type:
+          type: string
+          enum: [NONE, PROMPT_INJECTION, PRIVILEGE_ESCALATION, DATA_EXFILTRATION, FRAUD, UNKNOWN]
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        reason:
+          type: string
+    AuditLog:
+      type: object
+      required: [id, user_id, session_id, action, result, created_at]
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        session_id:
+          type: string
+        intent:
+          type: string
+        action:
+          type: string
+        policy_level:
+          type: string
+          enum: [GREEN, YELLOW, RED, BLOCKED]
+        plan_id:
+          type: string
+        tool_name:
+          type: string
+        request_snapshot:
+          type: object
+          additionalProperties: true
+        result:
+          type: string
+          enum: [SUCCESS, FAILED, BLOCKED, PENDING]
+        reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time

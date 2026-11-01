@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Build outputs
+dist/
+build/
+.next/
+coverage/
+.pytest_cache/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Model artifacts
+models/checkpoints/*
+models/embeddings/*
+!models/checkpoints/.gitkeep
+!models/embeddings/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.playwright-cli/
+/output/
+
