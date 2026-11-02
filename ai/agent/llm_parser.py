@@ -17,7 +17,7 @@ from ai.agent.schemas import ModelTrace, StructuredIntent
 
 load_dotenv()
 BEIJING_TIMEZONE = timezone(timedelta(hours=8), name="Asia/Shanghai")
-PROMPT_VERSION = "intent-parser-2026.11.01"
+PROMPT_VERSION = "intent-parser-2026.11.02"
 
 
 SYSTEM_PROMPT = """你是银行智能体的意图解析器，不执行任何业务。
@@ -25,6 +25,8 @@ SYSTEM_PROMPT = """你是银行智能体的意图解析器，不执行任何业�
 支持意图：bill.analyze、subscription.list、subscription.cancel、transfer.create、finance.cross_scenario、life.event_plan、unknown。
 转账必须提取 recipient、amount、currency；缺少 recipient 或 amount 时写入 missing_slots，禁止猜测。
 生活事件规划使用 life.event_plan，提取 related_person、relation_type、event_type、event_date、goal_required、target_amount、reminder_days_before。
+relation_type 必须使用大写枚举，并以账户本人指向关系人的方向表达：爱人使用 SPOUSE_OF，女儿/儿子/孩子使用 PARENT_OF，父母使用 CHILD_OF。
+event_type 必须使用大写枚举 BIRTHDAY、TUITION_DUE 或 ANNIVERSARY。
 日期必须输出 YYYY-MM-DD。只有月份、没有具体日期时保留 event_year/event_month，并把 event_date 放入 missing_slots，禁止自行猜测日期。
 用户要求存钱、预留、准备礼物或缴纳学费时 goal_required=true；缺少目标金额时把 target_amount 放入 missing_slots。
 模型只能生成候选计划，不能声称已经保存关系、预留资金或安排提醒。

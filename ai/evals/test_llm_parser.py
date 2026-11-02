@@ -93,8 +93,8 @@ def test_deepseek_life_event_output_is_schema_validated(monkeypatch):
         "confidence": 0.95,
         "slots": {
             "related_person": "爱人",
-            "relation_type": "SPOUSE_OF",
-            "event_type": "BIRTHDAY",
+            "relation_type": "spouse",
+            "event_type": "birthday",
             "event_label": "爱人生日",
             "event_date": "2026-11-18",
             "event_year": 2026,
@@ -114,6 +114,8 @@ def test_deepseek_life_event_output_is_schema_validated(monkeypatch):
     intent, trace = llm_parser.parse_with_llm("我爱人生日，准备一千元", [])
 
     assert intent["name"] == "life.event_plan"
+    assert intent["slots"]["relation_type"] == "SPOUSE_OF"
+    assert intent["slots"]["event_type"] == "BIRTHDAY"
     assert intent["slots"]["event_date"] == "2026-11-18"
     assert intent["slots"]["target_amount"] == 1000
     assert trace["status"] == "SUCCEEDED"

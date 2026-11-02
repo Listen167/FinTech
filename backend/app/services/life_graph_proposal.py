@@ -6,6 +6,8 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
+from pydantic import ValidationError
+
 from backend.app.repositories.life_graph import LifeGraphRepository
 from backend.app.schemas.life_graph import LifeGraphChangeSet
 
@@ -225,13 +227,16 @@ def build_life_graph_proposal(
             },
         })
 
-    change_set = LifeGraphChangeSet.model_validate({
-        "nodes": nodes,
-        "edges": edges,
-        "events": events,
-        "goals": goals,
-        "actions": actions,
-    })
+    try:
+        change_set = LifeGraphChangeSet.model_validate({
+            "nodes": nodes,
+            "edges": edges,
+            "events": events,
+            "goals": goals,
+            "actions": actions,
+        })
+    except ValidationError as error:
+        raise LifeGraphProposalError("LIFE_GRAPH_PROPOSAL_INVALID") from error
     summary_parts = [f"记录{event_label}（{event_date.isoformat()}）"]
     if goal_node_id is not None:
         summary_parts.append(f"建立 {Decimal(str(slots['target_amount'])):.2f} 元资金目标")
