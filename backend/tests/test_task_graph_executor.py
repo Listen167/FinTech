@@ -1,4 +1,5 @@
 from copy import deepcopy
+import logging
 
 import pytest
 
@@ -132,6 +133,36 @@ def test_handler_cannot_claim_success_without_receipt_output() -> None:
 
     assert result["nodes"][0]["runtime"]["status"] == "FAILED"
     assert result["nodes"][0]["runtime"]["error_code"] == "TASK_NODE_RECEIPT_REQUIRED"
+
+
+def test_handler_exception_is_logged_without_changing_public_error(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    def failing_handler(_node, _context):
+        raise RuntimeError("internal diagnostic")
+
+    executor = TaskGraphExecutor({"transaction.list": failing_handler})
+    with caplog.at_level(
+        logging.ERROR,
+        logger="backend.app.services.task_graph_executor",
+    ):
+        result = executor.execute(
+            plan_with([
+                {
+                    "id": "n1",
+                    "type": "TOOL",
+                    "label": "读取",
+                    "tool": "transaction.list",
+                }
+            ]),
+            TaskExecutionContext(run={"run_id": "run_test"}),
+        )
+
+    assert result["nodes"][0]["runtime"]["error_code"] == (
+        "TASK_GRAPH_NODE_EXECUTION_FAILED"
+    )
+    assert "handler=transaction.list" in caplog.text
+    assert "node_id=n1" in caplog.text
 
 
 def test_executor_revalidates_input_digest_before_resume() -> None:

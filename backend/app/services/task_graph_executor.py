@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import logging
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -24,6 +25,9 @@ from ai.agent.task_graph import (
     transition_node_runtime,
     validate_task_graph,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 TASK_GRAPH_HANDLER_ERROR_MESSAGES = {
@@ -240,7 +244,13 @@ class TaskGraphExecutor:
                     error_code=error.code,
                     reason=error.code,
                 )
-            except Exception:
+            except Exception as error:
+                logger.exception(
+                    "任务图节点处理器异常 handler=%s node_id=%s exception_type=%s",
+                    handler_key,
+                    node.id,
+                    type(error).__name__,
+                )
                 outcome = TaskNodeOutcome.failed(
                     error_code="TASK_GRAPH_NODE_EXECUTION_FAILED",
                     reason="TASK_GRAPH_NODE_EXECUTION_FAILED",
