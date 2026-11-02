@@ -21,12 +21,14 @@ import {
   createGuardianRiskReview,
   decideGuardianRiskAsGuardian,
   decideGuardianRiskAsOwner,
+  fetchGuardianCandidates,
   fetchGuardianConsents,
   fetchGuardianInvitations,
   fetchGuardianRiskReviews,
   rejectGuardianInvitation,
   revokeGuardianConsent,
   type GuardianConsent,
+  type GuardianCandidate,
   type GuardianInvitation,
   type GuardianRiskReview,
   type GuardianScenario,
@@ -36,6 +38,7 @@ import {
 const props = defineProps<{ currentUserId: string }>();
 
 const invitations = ref<GuardianInvitation[]>([]);
+const candidates = ref<GuardianCandidate[]>([]);
 const consents = ref<GuardianConsent[]>([]);
 const reviews = ref<GuardianRiskReview[]>([]);
 const loading = ref(false);
@@ -43,7 +46,7 @@ const error = ref("");
 const notice = ref("");
 const inviteToken = ref("");
 const issuedToken = ref("");
-const guardianUserId = ref(props.currentUserId === "user_001" ? "user_002" : "user_001");
+const guardianUserId = ref("");
 const maxAmount = ref("50000");
 const validityDate = ref(defaultValidityDate());
 const selectedScenarios = ref<GuardianScenario[]>([
@@ -93,10 +96,15 @@ watch(ownerConsents, (items) => {
 }, { immediate: true });
 
 watch(() => props.currentUserId, () => {
-  guardianUserId.value = props.currentUserId === "user_001" ? "user_002" : "user_001";
+  guardianUserId.value = "";
   issuedToken.value = "";
   inviteToken.value = "";
   void refresh();
+});
+
+watch(guardianUserId, () => {
+  error.value = "";
+  issuedToken.value = "";
 });
 
 function defaultValidityDate() {
@@ -158,11 +166,16 @@ async function run(action: () => Promise<void>) {
 
 async function refresh() {
   await run(async () => {
-    const [invitationResult, consentResult, reviewResult] = await Promise.all([
+    const [candidateResult, invitationResult, consentResult, reviewResult] = await Promise.all([
+      fetchGuardianCandidates(),
       fetchGuardianInvitations(),
       fetchGuardianConsents(),
       fetchGuardianRiskReviews(),
     ]);
+    candidates.value = candidateResult.items;
+    if (!candidates.value.some((item) => item.user_id === guardianUserId.value)) {
+      guardianUserId.value = candidates.value[0]?.user_id ?? "";
+    }
     invitations.value = invitationResult.items;
     consents.value = consentResult.items;
     reviews.value = reviewResult.items;
@@ -300,13 +313,16 @@ onMounted(refresh);
       <div class="invite-layout">
         <form class="scope-form" @submit.prevent="issueInvitation">
           <label>守护账号
-            <select v-model="guardianUserId"><option value="user_001">林安 · user_001</option><option value="user_002">周宁 · user_002</option></select>
+            <select v-model="guardianUserId" :disabled="!candidates.length">
+              <option v-if="!candidates.length" value="">暂无可邀请账号</option>
+              <option v-for="candidate in candidates" :key="candidate.user_id" :value="candidate.user_id">{{ candidate.display_name }} · {{ candidate.user_id }}</option>
+            </select>
           </label>
           <label>单次金额上限<input v-model="maxAmount" type="number" min="0" step="100" required></label>
           <label>授权截止日期<input v-model="validityDate" type="date" required></label>
           <fieldset><legend>通知场景</legend><label v-for="item in scenarioOptions" :key="item.value"><input v-model="selectedScenarios" type="checkbox" :value="item.value">{{ item.label }}</label></fieldset>
           <fieldset><legend>守护人可见字段</legend><label v-for="item in fieldOptions" :key="item.value"><input v-model="selectedFields" type="checkbox" :value="item.value">{{ item.label }}</label></fieldset>
-          <button type="submit" class="primary-command" :disabled="loading || guardianUserId === currentUserId || !selectedScenarios.length || !selectedFields.length"><Link2 :size="16" />生成一次性邀请</button>
+          <button type="submit" class="primary-command" :disabled="loading || !guardianUserId || !selectedScenarios.length || !selectedFields.length"><Link2 :size="16" />生成一次性邀请</button>
         </form>
         <div class="accept-panel">
           <strong><KeyRound :size="16" />接受收到的邀请</strong>

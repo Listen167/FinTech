@@ -2490,6 +2490,34 @@
         }
       }
     },
+    "/api/guardian-circle/candidates": {
+      "get": {
+        "tags": [
+          "Guardian Circle"
+        ],
+        "summary": "List Candidates",
+        "operationId": "list_candidates_api_guardian_circle_candidates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response List Candidates Api Guardian Circle Candidates Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/guardian-circle/invitations": {
       "get": {
         "tags": [
@@ -5713,6 +5741,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",

@@ -158,6 +158,15 @@ def test_invitation_requires_both_users_and_raw_token_is_not_persisted():
         )
 
 
+def test_guardian_candidates_exclude_current_user():
+    service = GuardianCircleService(build_engine())
+
+    candidates = service.list_candidates("user_001")
+
+    assert [item["user_id"] for item in candidates] == ["user_002"]
+    assert all(item["user_id"] != "user_001" for item in candidates)
+
+
 def test_guardian_receives_only_allowlisted_summary_and_never_exact_amount():
     engine = build_engine()
     service = GuardianCircleService(engine)
@@ -332,6 +341,10 @@ def api_setup():
 
 def test_guardian_http_flow_and_stable_unauthorized_error(api_setup):
     client, _, active_user = api_setup
+    candidates = client.get("/api/guardian-circle/candidates")
+    assert candidates.status_code == 200
+    assert all(item["user_id"] != "user_001" for item in candidates.json()["items"])
+
     created = client.post("/api/guardian-circle/invitations", json={
         "guardian_user_id": "user_002",
         "scenarios": ["NEW_RECIPIENT"],

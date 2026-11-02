@@ -19,6 +19,15 @@ from backend.app.services.guardian_circle import GuardianCircleService
 router = APIRouter()
 
 
+@router.get("/candidates")
+def list_candidates(
+    context: AuthContext = Depends(get_current_auth),
+    service: GuardianCircleService = Depends(get_guardian_circle_service),
+) -> dict:
+    items = service.list_candidates(context.user_id)
+    return {"items": items, "total": len(items)}
+
+
 @router.post("/invitations", status_code=status.HTTP_201_CREATED)
 def create_invitation(
     payload: CreateGuardianInvitationRequest,

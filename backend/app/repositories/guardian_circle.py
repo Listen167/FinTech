@@ -20,6 +20,9 @@ from backend.app.db.models import (
 )
 
 
+DEMO_GUARDIAN_USER_IDS = ("user_001", "user_002")
+
+
 def _money(value: Decimal) -> str:
     return format(value, ".2f")
 
@@ -207,6 +210,26 @@ class GuardianCircleRepository:
                 {item for row in rows for item in (row.owner_user_id, row.guardian_user_id)},
             )
             return [self.invitation_to_dict(row, names) for row in rows]
+
+    def list_candidates(self, user_id: str) -> list[dict[str, str | None]]:
+        with Session(self.engine) as database:
+            rows = database.scalars(
+                select(UserRecord)
+                .where(
+                    UserRecord.id.in_(DEMO_GUARDIAN_USER_IDS),
+                    UserRecord.id != user_id,
+                    UserRecord.status == "ACTIVE",
+                )
+                .order_by(UserRecord.id)
+            ).all()
+            return [
+                {
+                    "user_id": row.id,
+                    "display_name": row.display_name,
+                    "phone_masked": row.phone_masked,
+                }
+                for row in rows
+            ]
 
     def list_consents(self, user_id: str) -> list[dict[str, Any]]:
         with Session(self.engine) as database:

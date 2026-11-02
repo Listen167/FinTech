@@ -343,6 +343,12 @@ export function fetchGuardianInvitations() {
   );
 }
 
+export function fetchGuardianCandidates() {
+  return requestJson<{ items: GuardianCandidate[]; total: number }>(
+    "/api/guardian-circle/candidates",
+  );
+}
+
 export function createGuardianInvitation(payload: CreateGuardianInvitationPayload) {
   return requestJson<GuardianInvitation>("/api/guardian-circle/invitations", {
     method: "POST",
@@ -784,6 +790,12 @@ export interface GuardianInvitation {
   created_at: string;
   invite_token?: string;
   token_returned_once?: true;
+}
+
+export interface GuardianCandidate {
+  user_id: string;
+  display_name: string;
+  phone_masked?: string | null;
 }
 
 export interface CreateGuardianInvitationPayload {

@@ -173,6 +173,9 @@ class GuardianCircleService:
             database, {owner_user_id, guardian_user_id}
         )
 
+    def list_candidates(self, user_id: str) -> list[dict[str, str | None]]:
+        return self.repository.list_candidates(user_id)
+
     def create_invitation(
         self,
         *,
