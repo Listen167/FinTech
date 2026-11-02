@@ -7,9 +7,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+ARG PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple
+
 COPY backend/requirements.txt /tmp/requirements.txt
-RUN python -m pip install --upgrade pip \
-    && python -m pip install -r /tmp/requirements.txt \
+RUN python -m pip install --index-url "${PIP_INDEX_URL}" -r /tmp/requirements.txt \
     && rm -f /tmp/requirements.txt
 
 RUN groupadd --gid 10001 app \

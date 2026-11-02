@@ -114,6 +114,8 @@ APP_DOMAIN=agent.example.com
 APP_IMAGE_TAG=latest
 APP_ENV_FILE=.env.production
 MYSQL_ENV_FILE=.env.mysql
+PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple
+NPM_REGISTRY=https://registry.npmmirror.com
 ```
 
 `APP_DOMAIN` 只写主机名，不加 `https://`、端口或路径。暂时通过公网 IP 测试纯 HTTP 时可以使用：
@@ -172,6 +174,8 @@ docker compose config --quiet
 docker compose pull mysql gateway
 docker compose build api frontend
 ```
+
+中国大陆服务器默认通过腾讯云 PyPI 镜像和 npmmirror 构建。它们只影响镜像构建，不影响 DeepSeek 或飞书运行时请求。若镜像源不可达，可在 `.env` 中替换 `PIP_INDEX_URL` 或 `NPM_REGISTRY` 后重试；Docker 会复用已完成的构建缓存。
 
 验证生产变量和 Caddy 配置；两条命令都不会输出密钥值：
 
