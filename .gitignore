@@ -16,6 +16,8 @@ coverage/
 .env
 .env.*
 !.env.example
+deploy/env.production
+deploy/env.mysql
 
 # Model artifacts
 models/checkpoints/*

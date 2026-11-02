@@ -80,6 +80,12 @@ cd frontend
 npm.cmd run build
 ```
 
+## Docker 与服务器部署
+
+仓库提供 FastAPI、MySQL、Vue/Nginx、飞书长连接 Worker、生活事件雷达 Worker 和 Caddy HTTPS 网关的 Docker Compose 配置。生产环境只需要开放 80/443，数据库和应用内部端口不对公网暴露。
+
+详细的域名解析、密钥隔离、容器启动、演示账号初始化、健康检查和备份恢复步骤见 [Docker、域名与 HTTPS 部署说明](docs/DEPLOYMENT.md)。禁止上传本地 `.env`；服务器应基于 `deploy/` 下的无密钥模板单独创建生产配置。
+
 ## 可选大模型配置
 
 系统默认使用确定性中文解析器，保证离线演示稳定。复制 `.env.example` 为 `.env` 并填写 `DEEPSEEK_API_KEY` 后，即可使用 OpenAI Python SDK 调用 DeepSeek 进行结构化意图解析。模型超时、API 错误或输出不符合 Pydantic Schema 时自动回退，且模型不可绕过后端策略。
@@ -108,4 +114,5 @@ npm.cmd run build
 - [安全自评报告](docs/SECURITY_SELF_ASSESSMENT.md)
 - [答辩与演示脚本](docs/DEMO_SCRIPT.md)
 - [获奖创新路线](docs/INNOVATION_ROADMAP.md)
+- [Docker、域名与 HTTPS 部署说明](docs/DEPLOYMENT.md)
 

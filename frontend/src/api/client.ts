@@ -1,5 +1,10 @@
 const DEFAULT_API_HOST = typeof window === "undefined" ? "localhost" : window.location.hostname;
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? `http://${DEFAULT_API_HOST}:8000`;
+const CONFIGURED_API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim();
+const API_BASE_URL = CONFIGURED_API_BASE_URL !== undefined
+  ? CONFIGURED_API_BASE_URL.replace(/\/+$/, "")
+  : import.meta.env.PROD
+    ? ""
+    : `http://${DEFAULT_API_HOST}:8000`;
 const CSRF_COOKIE_NAME = import.meta.env.VITE_AUTH_CSRF_COOKIE_NAME ?? "safebank_csrf";
 
 let accessToken: string | undefined;

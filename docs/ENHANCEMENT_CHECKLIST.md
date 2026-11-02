@@ -169,8 +169,8 @@
 
 ### J. Docker、部署和比赛交付（P2）
 
-- [ ] J1. Docker Compose 启动前端、FastAPI、MySQL、飞书 Worker 和事件调度 Worker。
-- [ ] J2. 增加数据库迁移、健康检查、启动依赖和持久卷说明。
+- [ ] J1. Docker Compose 启动前端、FastAPI、MySQL、飞书 Worker 和事件调度 Worker。（配置已完成，待服务器构建验收）
+- [ ] J2. 增加数据库迁移、健康检查、启动依赖和持久卷说明。（配置已完成，待服务器运行验收）
 - [ ] J3. 使用 HTTPS 受信域名替换本地跳转地址，密钥只通过部署环境注入。
 - [ ] J4. 完成安全自评、已知风险、恢复方案和生产化边界说明。
 - [ ] J5. 更新架构图、OpenAPI、README、五分钟视频脚本和十分钟答辩 PPT。

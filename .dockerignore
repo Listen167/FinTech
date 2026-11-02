@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env
+.env.*
+.venv
+venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+frontend
+docs
+output
+debug.log
+*.pem
+*.key
+*.crt
