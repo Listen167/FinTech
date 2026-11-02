@@ -44,7 +44,7 @@ const active = computed(() => current.value.status === "COOLING_OFF");
 
 function readableError(reason: unknown) {
   if (reason instanceof ApiError) return reason.message;
-  if (reason instanceof TypeError) return "无法连接后端服务，请确认服务已启动。";
+  if (reason instanceof TypeError) return "页面处理响应时发生异常，请刷新后重试。";
   return reason instanceof Error ? reason.message : "操作失败，请稍后重试。";
 }
 

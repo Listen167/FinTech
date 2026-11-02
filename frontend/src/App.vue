@@ -141,7 +141,7 @@ function readableError(reason: unknown, fallback = "服务暂时不可用") {
     const suffix = reason.retryable ? " 可以稍后重试。" : "";
     return `${reason.message}${suffix}`;
   }
-  if (reason instanceof TypeError) return "无法连接后端服务，请确认服务已启动。";
+  if (reason instanceof TypeError) return "页面处理响应时发生异常，请刷新后重试。";
   return reason instanceof Error ? reason.message : fallback;
 }
 

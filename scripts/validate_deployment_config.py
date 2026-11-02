@@ -99,13 +99,16 @@ def validate_environment(environment: Mapping[str, str]) -> list[str]:
             environment.get("AUTH_COOKIE_SECURE")
         ):
             errors.append("HTTPS 部署必须设置 AUTH_COOKIE_SECURE=true。")
-        elif parsed.scheme == "http" and not _enabled(
-            environment.get("DEPLOYMENT_ALLOW_INSECURE_HTTP")
-        ):
-            errors.append(
-                "HTTP 仅允许临时联调；如确需使用，请显式设置 "
-                "DEPLOYMENT_ALLOW_INSECURE_HTTP=true。"
-            )
+        elif parsed.scheme == "http":
+            if not _enabled(environment.get("DEPLOYMENT_ALLOW_INSECURE_HTTP")):
+                errors.append(
+                    "HTTP 仅允许临时联调；如确需使用，请显式设置 "
+                    "DEPLOYMENT_ALLOW_INSECURE_HTTP=true。"
+                )
+            if _enabled(environment.get("AUTH_COOKIE_SECURE")):
+                errors.append(
+                    "HTTP 临时联调必须设置 AUTH_COOKIE_SECURE=false，否则浏览器不会携带刷新 Cookie。"
+                )
 
         app_domain = environment.get("APP_DOMAIN", "").strip()
         if app_domain and app_domain != ":80":

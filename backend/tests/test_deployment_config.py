@@ -53,6 +53,17 @@ def test_http_requires_explicit_insecure_deployment_switch() -> None:
     assert validate_environment(environment) == []
 
 
+def test_http_rejects_secure_cookie_configuration() -> None:
+    environment = _valid_environment()
+    environment["TRUSTED_APP_BASE_URL"] = "http://192.0.2.10"
+    environment["APP_DOMAIN"] = ":80"
+    environment["DEPLOYMENT_ALLOW_INSECURE_HTTP"] = "true"
+
+    errors = validate_environment(environment)
+
+    assert any("AUTH_COOKIE_SECURE=false" in error for error in errors)
+
+
 def test_database_and_domain_mismatches_are_rejected() -> None:
     environment = _valid_environment()
     environment["MYSQL_PASSWORD"] = "different-password"

@@ -37,6 +37,30 @@ function readCookie(name: string) {
   return item ? decodeURIComponent(item.slice(prefix.length)) : undefined;
 }
 
+function createIdempotencyKey() {
+  const cryptoApi = globalThis.crypto;
+  if (typeof cryptoApi?.randomUUID === "function") return cryptoApi.randomUUID();
+  if (typeof cryptoApi?.getRandomValues !== "function") {
+    throw new ApiError(
+      0,
+      "BROWSER_CRYPTO_UNAVAILABLE",
+      "当前浏览器无法生成安全请求标识，请升级浏览器或改用 HTTPS。",
+    );
+  }
+
+  const bytes = cryptoApi.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0"));
+  return [
+    hex.slice(0, 4).join(""),
+    hex.slice(4, 6).join(""),
+    hex.slice(6, 8).join(""),
+    hex.slice(8, 10).join(""),
+    hex.slice(10, 16).join(""),
+  ].join("-");
+}
+
 async function responseError(response: Response) {
   let code = "REQUEST_FAILED";
   let message = `请求失败（${response.status}）`;
@@ -102,6 +126,15 @@ async function sendRequest(path: string, options: RequestOptions) {
     ) {
       throw new ApiError(408, "REQUEST_TIMEOUT", "请求超时，请稍后重试。", true);
     }
+    if (reason instanceof TypeError) {
+      throw new ApiError(
+        0,
+        "NETWORK_ERROR",
+        "无法连接后端服务，请检查网络或稍后重试。",
+        true,
+        { path },
+      );
+    }
     throw reason;
   } finally {
     if (timeoutId !== undefined) window.clearTimeout(timeoutId);
@@ -132,7 +165,17 @@ export async function requestJson<TResponse>(
   }
 
   if (response.status === 204) return undefined as TResponse;
-  return response.json() as Promise<TResponse>;
+  try {
+    return await response.json() as TResponse;
+  } catch {
+    throw new ApiError(
+      response.status,
+      "INVALID_JSON_RESPONSE",
+      "后端返回了无法解析的数据，请稍后重试。",
+      false,
+      { path },
+    );
+  }
 }
 
 export function onAuthenticationExpired(handler: () => void) {
@@ -192,7 +235,7 @@ export async function logout(allDevices = false) {
 export function createAgentRun(sessionId: string, message: string) {
   return requestJson<AgentRun>("/api/agent/runs", {
     method: "POST",
-    headers: { "Idempotency-Key": crypto.randomUUID() },
+    headers: { "Idempotency-Key": createIdempotencyKey() },
     body: JSON.stringify({ session_id: sessionId, message }),
     timeoutMs: 45000,
   });
@@ -493,7 +536,7 @@ export function createFundingNegotiation(payload: CreateFundingNegotiationPayloa
     "/api/family-funding/negotiations",
     {
       method: "POST",
-      headers: { "Idempotency-Key": crypto.randomUUID() },
+      headers: { "Idempotency-Key": createIdempotencyKey() },
       body: JSON.stringify(payload),
     },
   );
@@ -532,7 +575,7 @@ export function correctLifeGraphNode(
     `/api/life-graph/nodes/${encodeURIComponent(nodeId)}`,
     {
       method: "PATCH",
-      headers: { "Idempotency-Key": crypto.randomUUID() },
+      headers: { "Idempotency-Key": createIdempotencyKey() },
       body: JSON.stringify(correction),
     },
   );
