@@ -96,7 +96,10 @@ async function sendRequest(path: string, options: RequestOptions) {
       credentials: "include",
     });
   } catch (reason) {
-    if (reason instanceof DOMException && reason.name === "AbortError") {
+    if (
+      controller?.signal.aborted
+      || (reason instanceof DOMException && reason.name === "AbortError")
+    ) {
       throw new ApiError(408, "REQUEST_TIMEOUT", "请求超时，请稍后重试。", true);
     }
     throw reason;
@@ -191,6 +194,7 @@ export function createAgentRun(sessionId: string, message: string) {
     method: "POST",
     headers: { "Idempotency-Key": crypto.randomUUID() },
     body: JSON.stringify({ session_id: sessionId, message }),
+    timeoutMs: 45000,
   });
 }
 
